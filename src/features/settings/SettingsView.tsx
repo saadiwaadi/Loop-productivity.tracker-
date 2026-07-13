@@ -4,14 +4,44 @@ import ThemeToggle from '../../components/ThemeToggle';
 import { db } from '../../db/db';
 import { useSettings } from '../../hooks/useDb';
 import { useConfirm } from '../../components/ConfirmProvider';
+import { useAuth } from '../../components/AuthProvider';
+import { signOut as apiSignOut } from '../../lib/auth';
+import { syncAll } from '../../db/syncManager';
+import { useSyncStatus } from '../../hooks/useSyncStatus';
+import { useNavigate } from 'react-router-dom';
 
 export default function SettingsView() {
   const settings = useSettings();
   const confirmDialog = useConfirm();
+  const auth = useAuth();
+  const syncStatus = useSyncStatus();
+  const navigate = useNavigate();
 
   const toggleDog = () => {
     if (settings) {
       db.settings.update(1, { dogEnabled: !settings.dogEnabled });
+    }
+  };
+
+  const handleSync = async () => {
+    await syncAll();
+  };
+
+  const handleSignOut = async () => {
+    const ok = await confirmDialog({
+      title: 'Sign Out',
+      message: 'Are you sure you want to sign out? Your offline data will remain on this device.',
+      type: 'warning',
+      confirmText: 'Sign Out',
+    });
+    if (ok) {
+      try {
+        await apiSignOut();
+        auth.signOut();
+        navigate('/login', { replace: true });
+      } catch (err) {
+        console.error('Sign out failed:', err);
+      }
     }
   };
 
@@ -217,6 +247,57 @@ export default function SettingsView() {
                 width: '100%',
               }}
             />
+          </div>
+
+          <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid var(--stroke)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '14.5px' }}>Account</div>
+                <div style={{ color: 'var(--ink-faint)', fontSize: '12.5px', marginTop: '1px' }}>{auth.user?.email || 'Not logged in'}</div>
+              </div>
+              <button
+                onClick={handleSignOut}
+                className="btn soft"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '12px',
+                  fontSize: '13px',
+                  color: 'var(--coral)',
+                  border: '1px solid rgba(255, 138, 107, 0.3)',
+                  background: 'rgba(255, 138, 107, 0.05)'
+                }}
+              >
+                <Icons.LogOut size={14} /> Sign Out
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '14.5px' }}>Cloud Synchronization</div>
+                <div style={{ color: 'var(--ink-faint)', fontSize: '12.5px', marginTop: '1px' }}>Status: {syncStatus}</div>
+              </div>
+              <button
+                onClick={handleSync}
+                className="btn primary"
+                disabled={syncStatus === 'Syncing'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  borderRadius: '12px',
+                  fontSize: '13px',
+                  height: '34px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <Icons.RefreshCw size={14} className={syncStatus === 'Syncing' ? 'animate-spin' : ''} />
+                Sync Now
+              </button>
+            </div>
           </div>
         </div>
         

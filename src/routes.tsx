@@ -6,41 +6,57 @@ import NotesView from './features/notes/NotesView';
 import HabitsView from './features/habits/HabitsView';
 import AnalyzerView from './features/analyzer/AnalyzerView';
 import SettingsView from './features/settings/SettingsView';
+import AuthView from './features/auth/AuthView';
+import ProtectedRoute from './components/ProtectedRoute';
 
 export const router = createBrowserRouter([
   {
+    path: '/login',
+    element: <AuthView />,
+  },
+  {
     path: '/',
-    element: <AppLayout />,
+    element: <ProtectedRoute />,
     children: [
       {
         path: '',
-        element: <HomeView />,
-      },
-      {
-        path: 'projects',
-        element: <ProjectsView />,
-      },
-      {
-        path: 'notes',
-        element: <NotesView />,
-      },
-      {
-        path: 'habits',
-        element: <HabitsView />,
-      },
-      {
-        path: 'analyzer',
-        element: <AnalyzerView />,
-      },
-      {
-        path: 'settings',
-        element: <SettingsView />,
-      },
-      {
-        path: '*',
-        element: <Navigate to="/" replace />,
+        element: <AppLayout />,
+        children: [
+          {
+            path: '',
+            element: <HomeView />,
+          },
+          {
+            path: 'projects',
+            element: <ProjectsView />,
+          },
+          {
+            path: 'notes',
+            element: <NotesView />,
+          },
+          {
+            path: 'habits',
+            element: <HabitsView />,
+          },
+          {
+            path: 'analyzer',
+            element: <AnalyzerView />,
+          },
+          {
+            path: 'settings',
+            element: <SettingsView />,
+          },
+          {
+            path: '*',
+            element: <Navigate to="/" replace />,
+          },
+        ],
       },
     ],
+  },
+  {
+    path: '*',
+    element: <Navigate to="/" replace />,
   },
 ]);
 
