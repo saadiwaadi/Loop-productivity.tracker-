@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as Icons from 'lucide-react';
 import { db } from '../db/db';
-import { useRunningTimeEntry, useProjects } from '../hooks/useDb';
+import { useRunningTimeEntries, useProjects } from '../hooks/useDb';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useConfirm } from './ConfirmProvider';
 import CustomSelect from './CustomSelect';
@@ -46,12 +46,130 @@ function parseDuration(input: string): number | null {
   return matched ? totalMs : null;
 }
 
+interface RunningTimerCardProps {
+  entry: any;
+  projects: any[];
+  allEntries: any[];
+  confirmDialog: any;
+}
+
+function RunningTimerCard({ entry, projects, allEntries, confirmDialog }: RunningTimerCardProps) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    setElapsed(Date.now() - entry.startedAt);
+
+    const interval = setInterval(() => {
+      setElapsed(Date.now() - entry.startedAt);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [entry.startedAt]);
+
+  const project = projects.find(p => p.id === entry.projectId);
+  if (!project) return null;
+
+  const renderProjectIcon = (iconName: string) => {
+    const Icon = (Icons as any)[iconName] || Icons.Folder;
+    return <Icon size={18} />;
+  };
+
+  const handleStopTimer = () => {
+    if (!entry.id) return;
+    db.timeEntries.update(entry.id, {
+      endedAt: Date.now(),
+    });
+  };
+
+  const handleResetTimer = async () => {
+    if (!entry.id) return;
+    const ok = await confirmDialog({
+      title: 'Cancel Session',
+      message: 'Are you sure you want to cancel this running session? (Time will not be logged)',
+      type: 'danger',
+      confirmText: 'Cancel Session',
+    });
+    if (ok) {
+      db.timeEntries.delete(entry.id);
+    }
+  };
+
+  const getLoggedTodayText = () => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const todayEntries = allEntries.filter(e => {
+      return e.projectId === project.id && e.startedAt >= startOfToday.getTime();
+    });
+
+    const totalMs = todayEntries.reduce((sum, e) => {
+      const end = e.endedAt ?? Date.now();
+      return sum + (end - e.startedAt);
+    }, 0);
+
+    const totalMinutes = Math.floor(totalMs / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+
+    return `Logged today · ${hours}h ${mins}m`;
+  };
+
+  const timeStr = formatElapsed(elapsed);
+  const parts = timeStr.split(':');
+  const mainTime = `${parts[0]}:${parts[1]}`;
+  const secondsTime = `:${parts[2]}`;
+
+  return (
+    <div style={{
+      background: 'var(--card-solid)',
+      border: '1px solid var(--stroke-2)',
+      borderRadius: '20px',
+      padding: '14px 16px',
+      marginBottom: '12px',
+      position: 'relative'
+    }}>
+      <div className="proj" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div
+          className="proj-ic"
+          style={{ backgroundColor: `var(${project.colorToken})`, width: '36px', height: '36px', borderRadius: '10px' }}
+        >
+          {renderProjectIcon(project.icon)}
+        </div>
+        <div>
+          <div className="nm" style={{ fontSize: '14.5px', fontWeight: 700 }}>{project.name}</div>
+          <div className="tg" style={{ fontSize: '11px', color: 'var(--ink-faint)' }}>Active stopwatch timer</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
+        <div>
+          <div className="timer" style={{ fontSize: '28px', textAlign: 'left', margin: '0', fontWeight: 700 }}>
+            {mainTime}
+            <span className="ms" style={{ fontSize: '15px' }}>{secondsTime}</span>
+          </div>
+          <div className="timer-cap" style={{ textAlign: 'left', margin: '2px 0 0', fontSize: '11px', color: 'var(--ink-faint)' }}>
+            {getLoggedTodayText()}
+          </div>
+        </div>
+
+        <div className="timer-ctrl" style={{ gap: '6px' }}>
+          <button onClick={handleStopTimer} className="btn primary" style={{ padding: '8px 12px', borderRadius: '10px', fontSize: '12.5px', height: '34px' }}>
+            <Icons.Pause fill="currentColor" size={13} /> Pause
+          </button>
+          <button onClick={handleResetTimer} className="btn soft" style={{ padding: '8px 10px', borderRadius: '10px', fontSize: '12.5px', height: '34px' }} title="Cancel session">
+            <Icons.RotateCcw size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ActiveSession() {
-  const runningEntry = useRunningTimeEntry();
+  const runningEntries = useRunningTimeEntries();
   const projects = useProjects();
   const confirmDialog = useConfirm();
 
-  const [elapsed, setElapsed] = useState(0);
   const [selectedProjectId, setSelectedProjectId] = useState<number>(0);
   const [manualInput, setManualInput] = useState('');
   const [note, setNote] = useState('');
@@ -64,30 +182,6 @@ export default function ActiveSession() {
     }
   }, [projects, selectedProjectId]);
 
-  useEffect(() => {
-    if (!runningEntry) {
-      setElapsed(0);
-      return;
-    }
-
-    setElapsed(Date.now() - runningEntry.startedAt);
-
-    const interval = setInterval(() => {
-      setElapsed(Date.now() - runningEntry.startedAt);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [runningEntry]);
-
-  const runningProject = runningEntry
-    ? projects.find(p => p.id === runningEntry.projectId)
-    : null;
-
-  const renderProjectIcon = (iconName: string) => {
-    const Icon = (Icons as any)[iconName] || Icons.Folder;
-    return <Icon size={20} />;
-  };
-
   const handleStartTimer = () => {
     if (selectedProjectId === 0) return;
     db.timeEntries.add({
@@ -98,26 +192,6 @@ export default function ActiveSession() {
       note: note.trim() || undefined,
     });
     setNote('');
-  };
-
-  const handleStopTimer = () => {
-    if (!runningEntry || !runningEntry.id) return;
-    db.timeEntries.update(runningEntry.id, {
-      endedAt: Date.now(),
-    });
-  };
-
-  const handleResetTimer = async () => {
-    if (!runningEntry || !runningEntry.id) return;
-    const ok = await confirmDialog({
-      title: 'Cancel Session',
-      message: 'Are you sure you want to cancel this running session? (Time will not be logged)',
-      type: 'danger',
-      confirmText: 'Cancel Session',
-    });
-    if (ok) {
-      db.timeEntries.delete(runningEntry.id);
-    }
   };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
@@ -150,113 +224,70 @@ export default function ActiveSession() {
     setNote('');
   };
 
-  // Logged today calculation for running project
-  const getLoggedTodayText = () => {
-    if (!runningProject || !runningProject.id) return 'Keep it steady';
-
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const todayEntries = allEntries.filter(e => {
-      return e.projectId === runningProject.id && e.startedAt >= startOfToday.getTime();
-    });
-
-    const totalMs = todayEntries.reduce((sum, entry) => {
-      const end = entry.endedAt ?? Date.now();
-      return sum + (end - entry.startedAt);
-    }, 0);
-
-    const totalMinutes = Math.floor(totalMs / (1000 * 60));
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-
-    return `Logged today · ${hours}h ${mins}m`;
-  };
-
-  const timeStr = formatElapsed(elapsed);
-  const parts = timeStr.split(':');
-  const mainTime = `${parts[0]}:${parts[1]}`;
-  const secondsTime = `:${parts[2]}`;
-
   return (
-    <div className="session">
-      {runningEntry && runningProject ? (
-        <div>
-          <div className="proj">
-            <div
-              className="proj-ic"
-              style={{ backgroundColor: `var(${runningProject.colorToken})` }}
-            >
-              {renderProjectIcon(runningProject.icon)}
+    <div className="session" style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+      <div>
+        {runningEntries.length > 0 && (
+          <div style={{ marginBottom: '14px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+              Active Timers ({runningEntries.length})
             </div>
-            <div>
-              <div className="nm">{runningProject.name}</div>
-              <div className="tg">Active stopwatch timer</div>
-            </div>
+            {runningEntries.map(entry => (
+              <RunningTimerCard
+                key={entry.id}
+                entry={entry}
+                projects={projects}
+                allEntries={allEntries}
+                confirmDialog={confirmDialog}
+              />
+            ))}
           </div>
+        )}
 
-          <div className="timer">
-            {mainTime}
-            <span className="ms">{secondsTime}</span>
-          </div>
-          <div className="timer-cap">{getLoggedTodayText()}</div>
-
-          <div className="timer-ctrl">
-            <button onClick={handleStopTimer} className="btn primary">
-              <Icons.Pause fill="currentColor" size={18} /> Pause
-            </button>
-            <button onClick={handleResetTimer} className="btn soft" title="Cancel session">
-              <Icons.RotateCcw size={18} /> Reset
-            </button>
+        <div className="card-h" style={{ marginBottom: '12px' }}>
+          <div>
+            <div className="t">Stopwatch</div>
+            <div className="sub">Focus on multitasking projects today</div>
           </div>
         </div>
-      ) : (
-        <div>
-          <div className="card-h">
-            <div>
-              <div className="t">Stopwatch</div>
-              <div className="sub">Focus on one thing today</div>
-            </div>
-          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
-            <CustomSelect
-              value={selectedProjectId}
-              onChange={val => setSelectedProjectId(Number(val))}
-              options={projects.length === 0 ? [
-                { value: 0, label: 'No projects created' }
-              ] : projects.map(p => ({
-                value: p.id!,
-                label: p.name
-              }))}
-            />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
+          <CustomSelect
+            value={selectedProjectId}
+            onChange={val => setSelectedProjectId(Number(val))}
+            options={projects.length === 0 ? [
+              { value: 0, label: 'No projects created' }
+            ] : projects.map(p => ({
+              value: p.id!,
+              label: p.name
+            }))}
+          />
 
-            <input
-              type="text"
-              placeholder="Session note (optional)..."
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '11px 14px',
-                borderRadius: '16px',
-                background: 'var(--input-bg)',
-                border: '1px solid var(--stroke-2)',
-                color: 'var(--ink)',
-                fontFamily: 'var(--font-body)',
-                outline: 'none',
-              }}
-            />
-          </div>
-
-          <button onClick={handleStartTimer} disabled={projects.length === 0} className="btn primary" style={{ width: '100%' }}>
-            <Icons.Play fill="currentColor" size={18} /> Start stopwatch
-          </button>
+          <input
+            type="text"
+            placeholder="Session note (optional)..."
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '11px 14px',
+              borderRadius: '16px',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--stroke-2)',
+              color: 'var(--ink)',
+              fontFamily: 'var(--font-body)',
+              outline: 'none',
+            }}
+          />
         </div>
-      )}
+
+        <button onClick={handleStartTimer} disabled={projects.length === 0} className="btn primary" style={{ width: '100%', padding: '12px 18px', borderRadius: '16px' }}>
+          <Icons.Play fill="currentColor" size={16} /> Start stopwatch
+        </button>
+      </div>
 
       {/* Manual log form */}
-      <form onSubmit={handleManualSubmit} className="manual">
+      <form onSubmit={handleManualSubmit} className="manual" style={{ marginTop: '16px' }}>
         <input
           type="text"
           placeholder="Log past hours (e.g. 45m, 1h 30m)..."

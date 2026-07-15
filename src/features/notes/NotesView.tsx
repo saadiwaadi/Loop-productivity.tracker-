@@ -29,6 +29,33 @@ function extractTitle(json: any): string {
   return 'Untitled Note';
 }
 
+function extractPreviewText(json: any, maxLength = 100): string {
+  try {
+    if (!json || !json.content) return '';
+    let text = '';
+    
+    for (const block of json.content) {
+      if (block.content) {
+        for (const child of block.content) {
+          if (child.text) {
+            text += child.text + ' ';
+            if (text.length >= maxLength) break;
+          }
+        }
+      }
+      if (text.length >= maxLength) break;
+    }
+    
+    const trimmed = text.trim();
+    if (trimmed.length > maxLength) {
+      return trimmed.substring(0, maxLength) + '...';
+    }
+    return trimmed || 'Empty note...';
+  } catch (e) {
+    return '';
+  }
+}
+
 export default function NotesView() {
   const confirmDialog = useConfirm();
   // --- DATABASE QUERIES ---
@@ -39,6 +66,7 @@ export default function NotesView() {
   const [activeNoteId, setActiveNoteId] = useState<number | null>(null);
   const [loadedNoteId, setLoadedNoteId] = useState<number | null>(null);
   const [saveTimeout, setSaveTimeout] = useState<any>(null);
+  const [expandPreviews, setExpandPreviews] = useState(false);
 
   // Ideas State
   const [ideaTag, setIdeaTag] = useState('App');
@@ -276,6 +304,19 @@ export default function NotesView() {
               <Icons.Plus size={14} /> New Note
             </button>
 
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">Notes</span>
+              <button
+                onClick={() => setExpandPreviews(!expandPreviews)}
+                className="ghost-btn"
+                style={{ padding: '2px 6px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px', height: 'auto' }}
+                title="Toggle detailed previews"
+              >
+                {expandPreviews ? <Icons.ChevronsUpDown size={11} /> : <Icons.ChevronsLeftRight size={11} />}
+                <span>{expandPreviews ? 'Compact' : 'Detailed'}</span>
+              </button>
+            </div>
+
             <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '420px' }}>
               {notesList.length === 0 ? (
                 <div className="text-xs text-ink-faint italic p-4 text-center">No notes created.</div>
@@ -297,7 +338,12 @@ export default function NotesView() {
                     <div className="font-semibold text-xs truncate text-ink max-w-[150px]">
                       {note.title || 'Untitled Note'}
                     </div>
-                    <div className="text-[10px] text-ink-faint mt-1">
+                    {expandPreviews && (
+                      <div className="text-[10px] text-ink-soft mt-1 leading-relaxed" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {extractPreviewText(note.contentJSON, 120)}
+                      </div>
+                    )}
+                    <div className="text-[9px] text-ink-faint mt-1">
                       {new Date(note.updatedAt).toLocaleDateString()}
                     </div>
                     {note.id && (
@@ -434,8 +480,20 @@ export default function NotesView() {
                   </div>
                 </div>
 
-                {/* Editor Content Area */}
-                <EditorContent editor={editor} style={{ flex: 1, minHeight: '320px' }} />
+                {/* Editor Content Area (Resizable) */}
+                <div style={{
+                  flex: 1,
+                  minHeight: '320px',
+                  resize: 'vertical',
+                  overflow: 'auto',
+                  border: '1px solid var(--stroke-2)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  background: 'var(--input-bg)',
+                  marginTop: '12px',
+                }}>
+                  <EditorContent editor={editor} />
+                </div>
               </>
             ) : (
               <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'var(--ink-faint)', fontSize: '14px' }}>
@@ -448,7 +506,7 @@ export default function NotesView() {
         {/* RIGHT COLUMN: IDEAS CAPTURE BOARD (4 columns) */}
         <Card className="span-4" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
-            <h2 className="font-display font-black text-xl mb-1">Ideas capture</h2>
+            <h2 className="font-display font-bold text-xl mb-1">Ideas capture</h2>
             <p className="text-xs text-ink-soft">Instantly capture a product spark or creative direction.</p>
           </div>
 
@@ -466,11 +524,11 @@ export default function NotesView() {
                     }
                   }}
                   options={[
-                    { value: 'App', label: '📱 App' },
-                    { value: 'Product', label: '📦 Product' },
-                    { value: 'Film', label: '🎬 Film' },
-                    { value: 'Brand', label: '✨ Brand' },
-                    { value: 'custom', label: '✏️ Custom Tag...' }
+                    { value: 'App', label: 'App' },
+                    { value: 'Product', label: 'Product' },
+                    { value: 'Film', label: 'Film' },
+                    { value: 'Brand', label: 'Brand' },
+                    { value: 'custom', label: 'Custom Tag...' }
                   ]}
                   style={{ flex: 1 }}
                 />

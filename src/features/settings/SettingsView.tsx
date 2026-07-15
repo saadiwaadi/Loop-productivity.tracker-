@@ -9,6 +9,8 @@ import { signOut as apiSignOut } from '../../lib/auth';
 import { syncAll } from '../../db/syncManager';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { useNavigate } from 'react-router-dom';
+import { getDateString } from '../../utils/date';
+
 
 export default function SettingsView() {
   const settings = useSettings();
@@ -76,7 +78,7 @@ export default function SettingsView() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `pace-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `pace-backup-${getDateString(new Date())}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -206,7 +208,7 @@ export default function SettingsView() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 0.61, 0.36, 1] }}
     >
-      <div className="vtitle" style={{ padding: '10px 8px 4px', fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '28px' }}>Profile & Settings</div>
+      <div className="vtitle" style={{ padding: '10px 8px 4px', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '28px' }}>Profile & Settings</div>
       <div className="vsub" style={{ padding: '0 8px 22px', color: 'var(--ink-soft)', fontSize: '15px' }}>Make it yours. Biscuit comes along for the ride.</div>
       
       <div className="bento">
@@ -219,11 +221,11 @@ export default function SettingsView() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-            <div style={{ width: '66px', height: '66px', borderRadius: '22px', background: 'linear-gradient(150deg,var(--violet),var(--sky))', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '26px', color: '#fff' }}>
+            <div style={{ width: '66px', height: '66px', borderRadius: '22px', background: 'linear-gradient(150deg,var(--violet),var(--sky))', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '26px', color: '#fff' }}>
               {firstLetter}
             </div>
             <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '22px' }}>{settings?.name || 'Saad'}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '22px' }}>{settings?.name || 'Saad'}</div>
               <div style={{ color: 'var(--ink-soft)', fontSize: '14px', fontWeight: 500 }}>Founder · BitLogicHub · Lahore</div>
             </div>
           </div>

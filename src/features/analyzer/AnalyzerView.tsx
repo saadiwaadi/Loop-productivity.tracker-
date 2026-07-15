@@ -5,6 +5,9 @@ import * as Icons from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '../../db/db';
 import Card from '../../components/Card';
+import { mergeIntervals } from '../../hooks/useDb';
+import { calculateHabitStreak } from '../../utils/date';
+
 
 type FilterRange = 'week' | 'month' | 'all';
 
@@ -34,76 +37,40 @@ export default function AnalyzerView() {
       return true; // 'all'
     };
 
-    // 1. Total focus hours
+    // 1. Total focus hours (merged/non-overlapping)
     const rangeEntries = timeEntries.filter(e => matchesRange(new Date(e.startedAt)));
-    const totalHours = rangeEntries.reduce((sum, entry) => {
-      const end = entry.endedAt ?? Date.now();
-      return sum + (end - entry.startedAt) / (1000 * 60 * 60);
+    const intervals = rangeEntries.map(e => ({
+      start: e.startedAt,
+      end: e.endedAt ?? Date.now(),
+    }));
+    const mergedIntervals = mergeIntervals(intervals);
+    const totalHours = mergedIntervals.reduce((sum, int) => {
+      return sum + (int.end - int.start) / (1000 * 60 * 60);
     }, 0);
 
     // 2. Tasks completed
     const completedTasks = tasks.filter(t => t.done && t.doneAt && matchesRange(new Date(t.doneAt)));
 
     // 3. Longest current habit streak
-    const getDateString = (date: Date) => {
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
-
     const activeHabits = habits.filter(h => h.archivedAt === null || h.archivedAt === undefined);
-    let maxStreak = 0;
+    let maxStreakVal = 0;
+    let maxStreakUnit = 'd';
 
     activeHabits.forEach(h => {
       const logs = habitLogs.filter(l => l.habitId === h.id);
       const completedDates = new Set(logs.map(l => l.date));
       const target = h.targetDaysPerWeek;
 
-      const checkPaceAtDate = (baseDate: Date) => {
-        let count = 0;
-        for (let i = 0; i < 7; i++) {
-          const d = new Date(baseDate);
-          d.setDate(baseDate.getDate() - i);
-          if (completedDates.has(getDateString(d))) {
-            count++;
-          }
-        }
-        return count >= target;
-      };
+      const streak = calculateHabitStreak(target, completedDates, now);
 
-      const today = new Date();
-      const yesterday = new Date();
-      yesterday.setDate(today.getDate() - 1);
-
-      let streak = 0;
-      let currentCheckedDate = new Date(today);
-
-      if (checkPaceAtDate(today)) {
-        streak = 1;
-        currentCheckedDate = today;
-      } else if (checkPaceAtDate(yesterday)) {
-        streak = 1;
-        currentCheckedDate = yesterday;
-      }
-
-      if (streak > 0) {
-        while (true) {
-          const nextDate = new Date(currentCheckedDate);
-          nextDate.setDate(currentCheckedDate.getDate() - 1);
-          if (checkPaceAtDate(nextDate)) {
-            streak++;
-            currentCheckedDate = nextDate;
-          } else {
-            break;
-          }
-        }
-      }
-
-      if (streak > maxStreak) {
-        maxStreak = streak;
+      const unit = target === 7 ? 'd' : 'w';
+      if (streak > maxStreakVal) {
+        maxStreakVal = streak;
+        maxStreakUnit = unit;
       }
     });
+
+    const maxStreak = `${maxStreakVal}${maxStreakUnit}`;
 
     // 4. Count of active projects
     const activeProjects = projects.filter(p => p.status === 'active');
@@ -215,7 +182,7 @@ export default function AnalyzerView() {
           <div className="ic" style={{ backgroundColor: 'var(--coral)' }}>
             <Icons.Flame size={19} />
           </div>
-          <div className="v">{analyzerData.maxStreak}d</div>
+          <div className="v">{analyzerData.maxStreak}</div>
           <div className="k">Longest Habit Streak</div>
         </div>
 

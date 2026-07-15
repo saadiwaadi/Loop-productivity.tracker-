@@ -7,11 +7,11 @@ export default function ProtectedRoute() {
   if (loading) {
     return (
       <div
+        className="full-screen-height"
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          height: '100vh',
           width: '100vw',
           background: 'var(--bg-1)',
           position: 'fixed',

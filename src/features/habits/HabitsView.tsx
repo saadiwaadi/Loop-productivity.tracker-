@@ -5,14 +5,8 @@ import * as Icons from 'lucide-react';
 import { db } from '../../db/db';
 import Card from '../../components/Card';
 import { useConfirm } from '../../components/ConfirmProvider';
+import { getDateString, calculateHabitStreak } from '../../utils/date';
 
-// Date utility functions
-const getDateString = (date: Date) => {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-};
 
 export default function HabitsView() {
   const confirmDialog = useConfirm();
@@ -22,11 +16,14 @@ export default function HabitsView() {
     const activeHabits = allHabits.filter(h => h.archivedAt === null || h.archivedAt === undefined);
     const logs = await db.habitLogs.toArray();
 
-    // Last 14 days array (ending today)
+    const now = new Date();
+
+    // Last 14 days array (ending today), normalized to noon local time
     const days: Date[] = [];
     for (let i = 13; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      d.setHours(12, 0, 0, 0);
       days.push(d);
     }
 
@@ -35,46 +32,7 @@ export default function HabitsView() {
       const completedDates = new Set(habitLogs.map(l => l.date));
       const target = h.targetDaysPerWeek;
 
-      // Streak calculation (rolling 7 days check)
-      const checkPaceAtDate = (baseDate: Date) => {
-        let count = 0;
-        for (let i = 0; i < 7; i++) {
-          const d = new Date(baseDate);
-          d.setDate(baseDate.getDate() - i);
-          if (completedDates.has(getDateString(d))) {
-            count++;
-          }
-        }
-        return count >= target;
-      };
-
-      const today = new Date();
-      const yesterday = new Date();
-      yesterday.setDate(today.getDate() - 1);
-
-      let streak = 0;
-      let currentCheckedDate = new Date(today);
-
-      if (checkPaceAtDate(today)) {
-        streak = 1;
-        currentCheckedDate = today;
-      } else if (checkPaceAtDate(yesterday)) {
-        streak = 1;
-        currentCheckedDate = yesterday;
-      }
-
-      if (streak > 0) {
-        while (true) {
-          const nextDate = new Date(currentCheckedDate);
-          nextDate.setDate(currentCheckedDate.getDate() - 1);
-          if (checkPaceAtDate(nextDate)) {
-            streak++;
-            currentCheckedDate = nextDate;
-          } else {
-            break;
-          }
-        }
-      }
+      const streak = calculateHabitStreak(target, completedDates, now);
 
       return {
         habit: h,
@@ -118,10 +76,12 @@ export default function HabitsView() {
     if (existingLogs.length > 0) {
       await Promise.all(existingLogs.map(l => l.id && db.habitLogs.delete(l.id)));
     } else {
+      const normalizedDate = new Date(date);
+      normalizedDate.setHours(12, 0, 0, 0); // Normalize to local noon
       await db.habitLogs.add({
         habitId,
         date: dateStr,
-        completedAt: date,
+        completedAt: normalizedDate,
       });
     }
   };
@@ -171,20 +131,17 @@ export default function HabitsView() {
     const isCompleted = detail.completedDates.has(getDateString(date));
     if (!isCompleted) return 'cell';
 
-    // Calculate rolling 7-day rate ending on this specific date
-    const weekStart = new Date(date);
-    weekStart.setDate(date.getDate() - 6);
-    weekStart.setHours(0, 0, 0, 0);
+    // Calculate rolling 7-day rate ending on this specific date using date string logic
+    let completedCount = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(date);
+      d.setDate(date.getDate() - i);
+      if (detail.completedDates.has(getDateString(d))) {
+        completedCount++;
+      }
+    }
 
-    const weekEnd = new Date(date);
-    weekEnd.setHours(23, 59, 59, 999);
-
-    const weekLogs = detail.logs.filter(l => {
-      const logTime = new Date(l.completedAt).getTime();
-      return logTime >= weekStart.getTime() && logTime <= weekEnd.getTime();
-    });
-
-    const rate = weekLogs.length / target;
+    const rate = completedCount / target;
 
     if (rate === 0) return 'cell';
     if (rate < 0.5) return 'cell l1';
@@ -226,7 +183,7 @@ export default function HabitsView() {
             <>
               {/* Header Days Row */}
               <div className="week-head">
-                <div style={{ width: '170px' }} />
+                <div style={{ width: 'var(--habit-lbl-width)' }} />
                 <div className="days">
                   {habitsData.days.map((day, idx) => (
                     <div key={idx} style={{ fontSize: '10px', textTransform: 'uppercase' }}>
@@ -249,7 +206,7 @@ export default function HabitsView() {
                       key={habit.id}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '170px 1fr',
+                        gridTemplateColumns: 'var(--habit-lbl-width) 1fr',
                         width: '100%',
                         alignItems: 'center',
                         gap: '8px',
@@ -441,7 +398,7 @@ export default function HabitsView() {
                     >
                       {renderIcon(habit.icon, 18)}
                     </div>
-                    <div className="v">{streak}d</div>
+                    <div className="v">{streak}{habit.targetDaysPerWeek === 7 ? 'd' : 'w'}</div>
                     <div className="k">{habit.name}</div>
                     
                     <button

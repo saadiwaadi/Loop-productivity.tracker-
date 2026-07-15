@@ -40,10 +40,13 @@ export function mapLocalToRemote(table: string, val: any, userId: string) {
   };
 
   for (const key of Object.keys(val)) {
-    if (key === 'id') continue;
+    if (key === 'id' || key === 'lastSyncedAt') continue;
 
     // Convert camelCase key to snake_case
-    const snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    let snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    if (snakeKey === 'content_j_s_o_n') {
+      snakeKey = 'content_json';
+    }
     let value = val[key];
 
     if (value instanceof Date) {

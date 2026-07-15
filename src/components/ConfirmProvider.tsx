@@ -119,7 +119,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 </div>
                 <div style={{ flex: 1 }}>
                   <h3
-                    className="font-display font-black"
+                    className="font-display font-bold"
                     style={{
                       fontSize: '18px',
                       color: 'var(--ink)',

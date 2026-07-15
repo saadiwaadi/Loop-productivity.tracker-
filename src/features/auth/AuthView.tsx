@@ -33,11 +33,14 @@ export default function AuthView() {
 
     try {
       if (isSignUp) {
-        const u = await apiSignUp(email.trim(), password.trim());
-        if (u) {
-          setSuccessMsg('Verification email sent! Check your inbox to complete sign up.');
+        const signupData = await apiSignUp(email.trim(), password.trim());
+        if (signupData.session) {
+          if (signupData.user) {
+            authSignIn(signupData.user);
+            navigate('/', { replace: true });
+          }
         } else {
-          setSuccessMsg('Account created successfully!');
+          setSuccessMsg('Account created! Please check your inbox for a verification email.');
         }
       } else {
         const u = await apiSignIn(email.trim(), password.trim());
@@ -56,11 +59,11 @@ export default function AuthView() {
 
   return (
     <div
+      className="full-screen-min-height"
       style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: '100vh',
         width: '100vw',
         position: 'fixed',
         top: 0,
@@ -134,7 +137,7 @@ export default function AuthView() {
           style={{
             fontFamily: 'var(--font-display)',
             fontSize: '32px',
-            fontWeight: 800,
+            fontWeight: 700,
             color: 'var(--ink)',
             marginBottom: '8px',
             textAlign: 'center'

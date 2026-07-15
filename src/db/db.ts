@@ -8,6 +8,9 @@ export interface Project {
   icon: string; // Lucide icon name string
   status: 'active' | 'paused' | 'shipped' | 'spec';
   targetHours?: number;
+  goalType?: 'hours' | 'tasks' | 'manual';
+  targetTasks?: number;
+  manualProgress?: number;
   createdAt: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
@@ -87,6 +90,7 @@ export interface Settings {
   homeLayout?: string[];
   updatedAt?: Date;
   deletedAt?: Date | null;
+  lastSyncedAt?: string;
 }
 
 export interface SyncMetadata {
@@ -100,6 +104,13 @@ export interface SyncQueueEntry {
   operation: 'upsert';
   recordId: number | string;
   attemptCount: number;
+  createdAt: Date;
+}
+
+export interface CheckIn {
+  id?: number;
+  startedAt: number; // Timestamp (milliseconds)
+  endedAt: number | null; // Nullable timestamp (null = currently checked in)
   createdAt: Date;
 }
 
@@ -120,6 +131,7 @@ export class PaceDatabase extends Dexie {
   settings!: Table<Settings>;
   syncMetadata!: Table<SyncMetadata>;
   syncQueue!: Table<SyncQueueEntry>;
+  checkIns!: Table<CheckIn>;
 
   constructor() {
     super('PaceDB');
@@ -150,6 +162,34 @@ export class PaceDatabase extends Dexie {
       syncQueue: '++id, table, operation, recordId'
     });
 
+    this.version(3).stores({
+      projects: '++id, name, status, createdAt, updatedAt, deletedAt',
+      tasks: '++id, projectId, done, dueAt, createdAt, updatedAt, deletedAt',
+      timeEntries: '++id, projectId, startedAt, endedAt, updatedAt, deletedAt',
+      notes: '++id, title, updatedAt, createdAt, deletedAt',
+      ideas: '++id, tag, title, createdAt, updatedAt, deletedAt',
+      habits: '++id, name, archivedAt, createdAt, updatedAt, deletedAt',
+      habitLogs: '++id, habitId, date, [habitId+date], updatedAt, deletedAt',
+      settings: 'id, updatedAt, deletedAt',
+      syncMetadata: 'key',
+      syncQueue: '++id, table, operation, recordId',
+      checkIns: '++id, startedAt, endedAt, createdAt'
+    });
+
+    this.version(4).stores({
+      projects: '++id, name, status, createdAt, updatedAt, deletedAt',
+      tasks: '++id, projectId, done, dueAt, createdAt, updatedAt, deletedAt',
+      timeEntries: '++id, projectId, startedAt, endedAt, updatedAt, deletedAt',
+      notes: '++id, title, updatedAt, createdAt, deletedAt',
+      ideas: '++id, tag, title, createdAt, updatedAt, deletedAt',
+      habits: '++id, name, archivedAt, createdAt, updatedAt, deletedAt',
+      habitLogs: '++id, habitId, date, [habitId+date], updatedAt, deletedAt',
+      settings: 'id, updatedAt, deletedAt',
+      syncMetadata: 'key',
+      syncQueue: '++id, table, operation, recordId',
+      checkIns: '++id, startedAt, endedAt, createdAt'
+    });
+
     // Populate seed data on first creation
     this.on('populate', () => {
       seedDemoData(this);
@@ -165,8 +205,8 @@ export class PaceDatabase extends Dexie {
           table(tableName) {
             const table = downlevelDatabase.table(tableName);
 
-            // Skip helper tables to prevent circular updates and recursion
-            if (tableName === 'syncQueue' || tableName === 'syncMetadata') {
+            // Skip helper tables and local-only tables to prevent circular updates and sync queuing
+            if (tableName === 'syncQueue' || tableName === 'syncMetadata' || tableName === 'checkIns') {
               return table;
             }
 
@@ -273,10 +313,14 @@ export class PaceDatabase extends Dexie {
                   }));
 
                   if (queueItems.length > 0) {
-                    setTimeout(() => {
-                      db.syncQueue.bulkAdd(queueItems).catch(err => {
+                    setTimeout(async () => {
+                      try {
+                        await db.syncQueue.bulkAdd(queueItems);
+                        const { triggerQueueProcess } = await import('./queueManager');
+                        triggerQueueProcess();
+                      } catch (err) {
                         console.error('[Middleware] Failed to append to syncQueue:', err);
-                      });
+                      }
                     }, 0);
                   }
 
@@ -319,10 +363,14 @@ export class PaceDatabase extends Dexie {
                       createdAt: now
                     }));
 
-                    setTimeout(() => {
-                      db.syncQueue.bulkAdd(queueItems).catch(err => {
+                    setTimeout(async () => {
+                      try {
+                        await db.syncQueue.bulkAdd(queueItems);
+                        const { triggerQueueProcess } = await import('./queueManager');
+                        triggerQueueProcess();
+                      } catch (err) {
                         console.error('[Middleware] Failed to append delete to syncQueue:', err);
-                      });
+                      }
                     }, 0);
                   }
 
@@ -366,10 +414,14 @@ export class PaceDatabase extends Dexie {
                       createdAt: now
                     }));
 
-                    setTimeout(() => {
-                      db.syncQueue.bulkAdd(queueItems).catch(err => {
+                    setTimeout(async () => {
+                      try {
+                        await db.syncQueue.bulkAdd(queueItems);
+                        const { triggerQueueProcess } = await import('./queueManager');
+                        triggerQueueProcess();
+                      } catch (err) {
                         console.error('[Middleware] Failed to append deleteRange to syncQueue:', err);
-                      });
+                      }
                     }, 0);
                   }
 

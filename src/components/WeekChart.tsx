@@ -1,19 +1,34 @@
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
-import { useWeeklyTimeByProject, useProjects } from '../hooks/useDb';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/db';
+import { useWeeklyTimeByProject, useProjects, mergeIntervals } from '../hooks/useDb';
 
 export default function WeekChart() {
   const chartData = useWeeklyTimeByProject();
   const projects = useProjects();
+  const allEntries = useLiveQuery(() => db.timeEntries.toArray()) || [];
 
-  const totalWeeklyHours = chartData.reduce((sum, dayEntry) => {
-    let daySum = 0;
-    projects.forEach(p => {
-      if (dayEntry[p.name]) {
-        daySum += Number(dayEntry[p.name]);
-      }
+  const totalWeeklyHours = (() => {
+    const now = new Date();
+    const startOf7DaysAgo = new Date(now);
+    startOf7DaysAgo.setDate(now.getDate() - 6);
+    startOf7DaysAgo.setHours(0, 0, 0, 0);
+    const startTime = startOf7DaysAgo.getTime();
+
+    const weeklyEntries = allEntries.filter(e => {
+      const end = e.endedAt ?? Date.now();
+      return end >= startTime;
     });
-    return sum + daySum;
-  }, 0).toFixed(1);
+
+    const trimmed = weeklyEntries.map(e => ({
+      start: Math.max(e.startedAt, startTime),
+      end: e.endedAt ?? Date.now(),
+    }));
+
+    const merged = mergeIntervals(trimmed);
+    const ms = merged.reduce((sum, int) => sum + (int.end - int.start), 0);
+    return (ms / (1000 * 60 * 60)).toFixed(1);
+  })();
 
   return (
     <div>
@@ -22,7 +37,7 @@ export default function WeekChart() {
           <div className="t">Weekly Activity</div>
           <div className="sub">Focus hours logged per project (last 7 days)</div>
         </div>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '18px', color: 'var(--ink)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '18px', color: 'var(--ink)' }}>
           {totalWeeklyHours}h
         </div>
       </div>

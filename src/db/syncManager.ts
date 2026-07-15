@@ -1,6 +1,7 @@
 import { syncTable } from './sync';
 import { getCurrentUser } from '../lib/auth';
-import { setSyncState } from './queueManager';
+import { setSyncState, processQueue } from './queueManager';
+import db, { setBypassSoftDeleteMiddleware } from './db';
 
 export interface SyncStats {
   success: boolean;
@@ -37,31 +38,55 @@ export async function syncAll(): Promise<SyncStats> {
     console.info('[SyncManager] Starting full incremental sync cycle...');
     setSyncState('Syncing');
 
+    // Flush any pending queue mutations first
+    await processQueue();
+
     const syncStartTime = new Date();
 
     // 1. Sync Settings (no dependencies)
-    await syncTable('settings', syncStartTime);
+    await syncTable('settings');
 
     // 2. Sync Projects (no dependencies)
-    await syncTable('projects', syncStartTime);
+    await syncTable('projects');
 
     // 3. Sync Habits (no dependencies)
-    await syncTable('habits', syncStartTime);
+    await syncTable('habits');
 
     // 4. Sync Tasks (depends on projects)
-    await syncTable('tasks', syncStartTime);
+    await syncTable('tasks');
 
     // 5. Sync Time Entries (depends on projects)
-    await syncTable('timeEntries', syncStartTime);
+    await syncTable('timeEntries');
 
     // 6. Sync Notes (no dependencies)
-    await syncTable('notes', syncStartTime);
+    await syncTable('notes');
 
     // 7. Sync Ideas (no dependencies)
-    await syncTable('ideas', syncStartTime);
+    await syncTable('ideas');
 
     // 8. Sync Habit Logs (depends on habits)
-    await syncTable('habitLogs', syncStartTime);
+    await syncTable('habitLogs');
+
+    // Update settings table with last successful sync time
+    setBypassSoftDeleteMiddleware(true);
+    try {
+      // Ensure settings row exists before updating
+      const settingsRow = await db.settings.get(1);
+      if (settingsRow) {
+        await db.settings.update(1, { lastSyncedAt: syncStartTime.toISOString() });
+      } else {
+        await db.settings.put({
+          id: 1,
+          name: 'Saad',
+          theme: 'light',
+          dogEnabled: true,
+          tutorialSeen: false,
+          lastSyncedAt: syncStartTime.toISOString()
+        });
+      }
+    } finally {
+      setBypassSoftDeleteMiddleware(false);
+    }
 
     console.info('[SyncManager] Incremental sync cycle completed successfully.');
     setSyncState('Idle');

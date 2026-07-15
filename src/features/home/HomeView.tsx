@@ -10,6 +10,7 @@ import WeekChart from '../../components/WeekChart';
 import HabitsToday from '../../components/HabitsToday';
 import SparksToday from '../../components/SparksToday';
 import ThemeToggle from '../../components/ThemeToggle';
+import { calculateMergedDuration } from '../../hooks/useDb';
 
 const DEFAULT_ORDER = ['clock', 'session', 'tasks', 'chart', 'habits', 'ideas'];
 
@@ -31,7 +32,7 @@ export default function HomeView() {
     }
   }, [settings]);
 
-  // Calculate hours tracked since Monday of this week
+  // Calculate hours tracked since Monday of this week (non-overlapping)
   const getWeeklyFocusedHours = () => {
     const now = new Date();
     const currentDay = now.getDay();
@@ -41,14 +42,16 @@ export default function HomeView() {
     startOfWeek.setHours(0, 0, 0, 0);
 
     const weekEntries = timeEntries.filter(e => {
-      const start = new Date(e.startedAt).getTime();
-      return start >= startOfWeek.getTime();
+      const end = e.endedAt ?? Date.now();
+      return end >= startOfWeek.getTime();
     });
 
-    const totalMs = weekEntries.reduce((sum, entry) => {
-      const end = entry.endedAt ?? Date.now();
-      return sum + (end - entry.startedAt);
-    }, 0);
+    const trimmedEntries = weekEntries.map(e => ({
+      startedAt: Math.max(e.startedAt, startOfWeek.getTime()),
+      endedAt: e.endedAt,
+    }));
+
+    const totalMs = calculateMergedDuration(trimmedEntries);
 
     return (totalMs / (1000 * 60 * 60)).toFixed(1);
   };

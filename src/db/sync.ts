@@ -15,7 +15,10 @@ export function mapRemoteToLocal(table: string, row: any) {
     if (key === 'id' || key === 'user_id') continue;
 
     // Convert snake_case key to camelCase
-    const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    let camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
+    if (camelKey === 'contentJson') {
+      camelKey = 'contentJSON';
+    }
     let value = row[key];
 
     if (
@@ -56,10 +59,9 @@ export async function pullTable(tableName: string) {
   const user = await getCurrentUser();
   if (!user) return;
 
-  // Retrieve last sync timestamp
-  const metadataKey = `last_${tableName}_sync`;
-  const metadata = await db.syncMetadata.get(metadataKey);
-  const lastSync = metadata ? metadata.value : null;
+  // Retrieve last sync timestamp from settings table
+  const settings = await db.settings.get(1);
+  const lastSync = settings?.lastSyncedAt || null;
 
   // Convert table name to snake_case for Supabase query
   const supabaseTable = tableName.replace(/([A-Z])/g, '_$1').toLowerCase();
@@ -112,10 +114,9 @@ export async function pushTable(tableName: string) {
   const user = await getCurrentUser();
   if (!user) return;
 
-  // Retrieve last sync timestamp
-  const metadataKey = `last_${tableName}_sync`;
-  const metadata = await db.syncMetadata.get(metadataKey);
-  const lastSync = metadata ? new Date(metadata.value).getTime() : 0;
+  // Retrieve last sync timestamp from settings table
+  const settings = await db.settings.get(1);
+  const lastSync = settings?.lastSyncedAt ? new Date(settings.lastSyncedAt).getTime() : 0;
 
   // Fetch all local records (bypassing soft delete filter to see deletions too)
   setBypassSoftDeleteMiddleware(true);
@@ -156,19 +157,12 @@ export async function pushTable(tableName: string) {
 /**
  * Synchronizes a single table in both directions
  */
-export async function syncTable(tableName: string, startTime: Date) {
+export async function syncTable(tableName: string) {
   // 1. Pull remote updates first
   await pullTable(tableName);
   
   // 2. Push local updates second
   await pushTable(tableName);
-
-  // 3. Update sync metadata timestamp
-  const metadataKey = `last_${tableName}_sync`;
-  await db.syncMetadata.put({
-    key: metadataKey,
-    value: startTime.toISOString()
-  });
 }
 
 // compatibility wrapper exports for feature layer

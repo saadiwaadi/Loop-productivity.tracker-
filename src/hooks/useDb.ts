@@ -1,5 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
+import { getDateString, calculateHabitStreak } from '../utils/date';
+
 
 // 1. Projects
 export function useProjects() {
@@ -24,11 +26,11 @@ export function useTasks(projectId?: number | null) {
 }
 
 // 3. Time Entries
-export function useRunningTimeEntry() {
+export function useRunningTimeEntries() {
   return useLiveQuery(async () => {
     const all = await db.timeEntries.toArray();
-    return all.find(e => !e.endedAt);
-  });
+    return all.filter(e => e.endedAt === null || e.endedAt === undefined);
+  }) || [];
 }
 
 export function useTimeEntriesForProject(projectId: number, sinceDate?: Date) {
@@ -122,10 +124,10 @@ export function useHabitLogs(habitId: number, daysBack: number) {
   return useLiveQuery(async () => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - daysBack);
-    cutoff.setHours(0, 0, 0, 0);
+    const cutoffStr = getDateString(cutoff);
 
     const logs = await db.habitLogs.where('habitId').equals(habitId).toArray();
-    return logs.filter(l => new Date(l.completedAt).getTime() >= cutoff.getTime());
+    return logs.filter(l => l.date >= cutoffStr);
   }, [habitId, daysBack]) || [];
 }
 
@@ -139,58 +141,51 @@ export function useHabitStreak(habitId: number) {
     const completedDates = new Set(logs.map(l => l.date));
     const target = habit.targetDaysPerWeek;
 
-    const getDateString = (date: Date) => {
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
-
-    const checkPaceAtDate = (baseDate: Date) => {
-      let count = 0;
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(baseDate);
-        d.setDate(baseDate.getDate() - i);
-        if (completedDates.has(getDateString(d))) {
-          count++;
-        }
-      }
-      return count >= target;
-    };
-
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-
-    let streak = 0;
-    let currentCheckedDate = new Date(today);
-
-    if (checkPaceAtDate(today)) {
-      streak = 1;
-      currentCheckedDate = today;
-    } else if (checkPaceAtDate(yesterday)) {
-      streak = 1;
-      currentCheckedDate = yesterday;
-    } else {
-      return 0;
-    }
-
-    while (true) {
-      const nextDate = new Date(currentCheckedDate);
-      nextDate.setDate(currentCheckedDate.getDate() - 1);
-      if (checkPaceAtDate(nextDate)) {
-        streak++;
-        currentCheckedDate = nextDate;
-      } else {
-        break;
-      }
-    }
-
-    return streak;
+    return calculateHabitStreak(target, completedDates);
   }, [habitId]) ?? 0;
 }
 
 // 9. Settings Singleton
 export function useSettings() {
   return useLiveQuery(() => db.settings.get(1));
+}
+
+// 10. Overlapping Interval Merging Helpers
+export interface Interval {
+  start: number;
+  end: number;
+}
+
+export function mergeIntervals(intervals: Interval[]): Interval[] {
+  if (intervals.length === 0) return [];
+
+  // Sort intervals by start time
+  const sorted = [...intervals].sort((a, b) => a.start - b.start);
+  const merged: Interval[] = [
+    { start: sorted[0].start, end: sorted[0].end }
+  ];
+
+  for (let i = 1; i < sorted.length; i++) {
+    const current = sorted[i];
+    const lastMerged = merged[merged.length - 1];
+
+    if (current.start <= lastMerged.end) {
+      // Overlapping or adjacent, merge them by updating the end time
+      lastMerged.end = Math.max(lastMerged.end, current.end);
+    } else {
+      merged.push({ start: current.start, end: current.end });
+    }
+  }
+
+  return merged;
+}
+
+export function calculateMergedDuration(timeEntries: { startedAt: number; endedAt: number | null }[]): number {
+  const intervals: Interval[] = timeEntries.map(e => ({
+    start: e.startedAt,
+    end: e.endedAt ?? Date.now(),
+  }));
+
+  const merged = mergeIntervals(intervals);
+  return merged.reduce((sum, int) => sum + (int.end - int.start), 0);
 }

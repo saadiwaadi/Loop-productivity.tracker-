@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppLayout from './App';
 import HomeView from './features/home/HomeView';
 import ProjectsView from './features/projects/ProjectsView';
+import ProjectDetailView from './features/projects/ProjectDetailView';
 import NotesView from './features/notes/NotesView';
 import HabitsView from './features/habits/HabitsView';
 import AnalyzerView from './features/analyzer/AnalyzerView';
@@ -29,6 +30,10 @@ export const router = createBrowserRouter([
           {
             path: 'projects',
             element: <ProjectsView />,
+          },
+          {
+            path: 'projects/:id',
+            element: <ProjectDetailView />,
           },
           {
             path: 'notes',

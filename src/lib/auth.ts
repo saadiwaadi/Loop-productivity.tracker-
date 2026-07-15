@@ -9,7 +9,7 @@ export async function signUp(email: string, password: string) {
     password,
   });
   if (error) throw error;
-  return data.user;
+  return data;
 }
 
 /**

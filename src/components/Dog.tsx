@@ -160,7 +160,7 @@ export default function Dog() {
         <svg viewBox="0 0 120 120">
           {/* Sleep indicator (floating Z's) */}
           {isSleepy && (
-            <g fontFamily="Nunito" fontWeight="900" fill="var(--ink-faint)">
+            <g fontFamily="var(--font-display)" fontWeight="700" fill="var(--ink-faint)">
               <motion.text
                 x="82" y="34" fontSize="13"
                 animate={{ opacity: [0, 1, 0], y: [0, -10, -20], x: [82, 85, 82] }}

@@ -3,6 +3,7 @@ import { getCurrentUser } from '../lib/auth';
 import { supabase } from '../lib/supabase';
 import { syncAll } from '../db/syncManager';
 import { type User } from '@supabase/supabase-js';
+import { subscribeToRealtime, unsubscribeFromRealtime } from '../db/realtime';
 
 interface AuthContextType {
   user: User | null;
@@ -23,7 +24,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       setLoading(false);
       if (u) {
-        // Initialize sync on page load/restore
+        // Initialize realtime and sync on page load/restore
+        subscribeToRealtime(u.id);
         syncAll();
       }
     });
@@ -35,27 +37,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(u);
         setLoading(false);
         if (u) {
-          // Initialize sync on sign-in
+          // Initialize realtime and sync on sign-in
+          subscribeToRealtime(u.id);
           syncAll();
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setLoading(false);
+        unsubscribeFromRealtime();
       }
     });
 
     return () => {
       subscription.unsubscribe();
+      unsubscribeFromRealtime();
     };
   }, []);
 
   const signIn = (u: User) => {
     setUser(u);
+    subscribeToRealtime(u.id);
     syncAll();
   };
 
   const signOut = () => {
     setUser(null);
+    unsubscribeFromRealtime();
   };
 
   return (

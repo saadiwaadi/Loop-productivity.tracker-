@@ -1,6 +1,8 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import * as Icons from 'lucide-react';
 import { db } from '../db/db';
+import { getDateString, calculateHabitStreak } from '../utils/date';
+
 
 export default function HabitsToday() {
   const habitDetails = useLiveQuery(async () => {
@@ -8,17 +10,11 @@ export default function HabitsToday() {
     const activeHabits = allHabits.filter(h => h.archivedAt === null || h.archivedAt === undefined);
     const logs = await db.habitLogs.toArray();
 
-    const getDateString = (date: Date) => {
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
+    const now = new Date();
+    const todayStr = getDateString(now);
 
-    const todayStr = getDateString(new Date());
-
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - 7);
+    const cutoff = new Date(now);
+    cutoff.setDate(now.getDate() - 7);
     cutoff.setHours(0, 0, 0, 0);
 
     return activeHabits.map(h => {
@@ -28,45 +24,7 @@ export default function HabitsToday() {
       const completedDates = new Set(habitLogs.map(l => l.date));
       const target = h.targetDaysPerWeek;
 
-      const checkPaceAtDate = (baseDate: Date) => {
-        let count = 0;
-        for (let i = 0; i < 7; i++) {
-          const d = new Date(baseDate);
-          d.setDate(baseDate.getDate() - i);
-          if (completedDates.has(getDateString(d))) {
-            count++;
-          }
-        }
-        return count >= target;
-      };
-
-      const today = new Date();
-      const yesterday = new Date();
-      yesterday.setDate(today.getDate() - 1);
-
-      let streak = 0;
-      let currentCheckedDate = new Date(today);
-
-      if (checkPaceAtDate(today)) {
-        streak = 1;
-        currentCheckedDate = today;
-      } else if (checkPaceAtDate(yesterday)) {
-        streak = 1;
-        currentCheckedDate = yesterday;
-      }
-
-      if (streak > 0) {
-        while (true) {
-          const nextDate = new Date(currentCheckedDate);
-          nextDate.setDate(currentCheckedDate.getDate() - 1);
-          if (checkPaceAtDate(nextDate)) {
-            streak++;
-            currentCheckedDate = nextDate;
-          } else {
-            break;
-          }
-        }
-      }
+      const streak = calculateHabitStreak(target, completedDates, now);
 
       const isTodayCompleted = completedDates.has(todayStr);
 
@@ -80,12 +38,6 @@ export default function HabitsToday() {
   }) || [];
 
   const handleToggleHabit = async (habitId: number, isTodayCompleted: boolean) => {
-    const getDateString = (date: Date) => {
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const dd = String(date.getDate()).padStart(2, '0');
-      return `${yyyy}-${mm}-${dd}`;
-    };
     const todayStr = getDateString(new Date());
 
     if (isTodayCompleted) {
@@ -99,10 +51,12 @@ export default function HabitsToday() {
         await Promise.all(todayLogs.map(l => l.id && db.habitLogs.delete(l.id)));
       }
     } else {
+      const normalizedDate = new Date();
+      normalizedDate.setHours(12, 0, 0, 0); // Normalize to local noon
       await db.habitLogs.add({
         habitId,
         date: todayStr,
-        completedAt: new Date(),
+        completedAt: normalizedDate,
       });
     }
   };
@@ -194,7 +148,7 @@ export default function HabitsToday() {
                 <div className="info">
                   <div className="n">{habit.name}</div>
                   <div className="s">
-                    {streak > 0 ? `Streak: ${streak}d` : `Target: ${habit.targetDaysPerWeek}x/wk`}
+                    {streak > 0 ? `Streak: ${streak}${habit.targetDaysPerWeek === 7 ? 'd' : 'w'}` : `Target: ${habit.targetDaysPerWeek}x/wk`}
                   </div>
                 </div>
                 <div className="dots">{dots}</div>
