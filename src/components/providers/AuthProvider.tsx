@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { getCurrentUser } from '../lib/auth';
-import { supabase } from '../lib/supabase';
-import { syncAll } from '../db/syncManager';
+import { getCurrentUser } from '../../lib/auth';
+import { supabase } from '../../lib/supabase';
+import { syncAll } from '../../db/syncManager';
 import { type User } from '@supabase/supabase-js';
-import { subscribeToRealtime, unsubscribeFromRealtime } from '../db/realtime';
+import { subscribeToRealtime, unsubscribeFromRealtime } from '../../db/realtime';
 
 interface AuthContextType {
   user: User | null;

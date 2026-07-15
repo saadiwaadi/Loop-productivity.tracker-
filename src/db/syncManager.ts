@@ -67,6 +67,10 @@ export async function syncAll(): Promise<SyncStats> {
     // 8. Sync Habit Logs (depends on habits)
     await syncTable('habitLogs');
 
+    // 9. Sync Calendar Events (no dependencies)
+    await syncTable('calendarEvents');
+
+
     // Update settings table with last successful sync time
     setBypassSoftDeleteMiddleware(true);
     try {

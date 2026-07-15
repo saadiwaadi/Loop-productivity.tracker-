@@ -8,7 +8,8 @@ import HabitsView from './features/habits/HabitsView';
 import AnalyzerView from './features/analyzer/AnalyzerView';
 import SettingsView from './features/settings/SettingsView';
 import AuthView from './features/auth/AuthView';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from './components/providers/ProtectedRoute';
+import CalendarView from './features/calendar/CalendarView';
 
 export const router = createBrowserRouter([
   {
@@ -42,6 +43,10 @@ export const router = createBrowserRouter([
           {
             path: 'habits',
             element: <HabitsView />,
+          },
+          {
+            path: 'calendar',
+            element: <CalendarView />,
           },
           {
             path: 'analyzer',

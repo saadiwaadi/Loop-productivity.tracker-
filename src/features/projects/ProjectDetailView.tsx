@@ -4,9 +4,11 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import * as Icons from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '../../db/db';
-import { useTasks } from '../../hooks/useDb';
-import { useConfirm } from '../../components/ConfirmProvider';
-import CustomSelect from '../../components/CustomSelect';
+import { useConfirm } from '../../components/providers/ConfirmProvider';
+import CustomSelect from '../../components/ui/CustomSelect';
+import ProjectDetailTasks from './ProjectDetailTasks';
+import ProjectDetailSessions from './ProjectDetailSessions';
+import ProjectGoalCard from './ProjectGoalCard';
 
 const colorOptions = [
   { label: 'Violet', value: '--violet' },
@@ -31,8 +33,6 @@ export default function ProjectDetailView() {
 
   // DB queries
   const project = useLiveQuery(() => db.projects.get(projectId), [projectId]);
-  const allTasks = useTasks();
-  const allTimeEntries = useLiveQuery(() => db.timeEntries.toArray()) || [];
 
   // Edit fields state
   const [editName, setEditName] = useState('');
@@ -45,10 +45,7 @@ export default function ProjectDetailView() {
   const [editManualProgress, setEditManualProgress] = useState(0);
 
   // Interaction forms state
-  const [newTaskTitle, setNewTaskTitle] = useState('');
   const [projectNotes, setProjectNotes] = useState('');
-  const [manualHours, setManualHours] = useState('');
-  const [manualNote, setManualNote] = useState('');
   const [saveFeedback, setSaveFeedback] = useState(false);
 
   // Sync state when project loads
@@ -97,56 +94,6 @@ export default function ProjectDetailView() {
     }
   };
 
-  const formatTimeEntryDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const calculateDuration = (start: number, end: number | null) => {
-    const elapsed = (end ?? Date.now()) - start;
-    const hours = elapsed / (1000 * 60 * 60);
-    return `${hours.toFixed(2)}h`;
-  };
-
-  // Metrics
-  const projTasks = allTasks.filter(t => t.projectId === projectId);
-  const totalTasks = projTasks.length;
-  const completedTasks = projTasks.filter(t => t.done).length;
-
-  const projEntries = allTimeEntries.filter(e => e.projectId === projectId);
-  const loggedHours = projEntries.reduce((sum, entry) => {
-    const end = entry.endedAt ?? Date.now();
-    return sum + (end - entry.startedAt) / (1000 * 60 * 60);
-  }, 0);
-
-  // Compute progress based on goalType
-  let calculatedProgress = 0;
-  if (editGoalType === 'hours') {
-    const target = project.targetHours || 0;
-    calculatedProgress = target > 0 ? Math.round(Math.min(100, (loggedHours / target) * 100)) : 0;
-  } else if (editGoalType === 'tasks') {
-    const target = project.targetTasks || 0;
-    if (target > 0) {
-      calculatedProgress = Math.round(Math.min(100, (completedTasks / target) * 100));
-    } else {
-      calculatedProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    }
-  } else if (editGoalType === 'manual') {
-    calculatedProgress = project.manualProgress ?? 0;
-  }
-
-  // Sorted tasks (incomplete top, completed bottom)
-  const sortedProjectTasks = [...projTasks].sort((a, b) => {
-    if (a.done === b.done) {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
-    return a.done ? 1 : -1;
-  });
-
   // Action handlers
   const handleUpdateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,73 +138,6 @@ export default function ProjectDetailView() {
     db.projects.update(projectId, { notes: text });
   };
 
-  const handleAddTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim()) return;
-
-    db.tasks.add({
-      projectId,
-      title: newTaskTitle.trim(),
-      done: false,
-      createdAt: new Date(),
-    });
-
-    setNewTaskTitle('');
-  };
-
-  const handleToggleTask = (taskId: number, currentDone: boolean) => {
-    db.tasks.update(taskId, {
-      done: !currentDone,
-      doneAt: !currentDone ? new Date() : null,
-    });
-  };
-
-  const handleDeleteTask = async (taskId: number) => {
-    const ok = await confirmDialog({
-      title: 'Delete Task',
-      message: 'Are you sure you want to delete this task?',
-      type: 'danger',
-      confirmText: 'Delete',
-    });
-    if (ok) {
-      db.tasks.delete(taskId);
-    }
-  };
-
-  const handleManualTimeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const hrs = Number(manualHours);
-    if (isNaN(hrs) || hrs <= 0) return;
-
-    const ms = hrs * 60 * 60 * 1000;
-    const endedAt = Date.now();
-    const startedAt = endedAt - ms;
-
-    db.timeEntries.add({
-      projectId,
-      startedAt,
-      endedAt,
-      source: 'manual',
-      note: manualNote.trim() || undefined,
-      createdAt: new Date(),
-    });
-
-    setManualHours('');
-    setManualNote('');
-  };
-
-  const handleDeleteTimeEntry = async (entryId: number) => {
-    const ok = await confirmDialog({
-      title: 'Delete Focus Entry',
-      message: 'Are you sure you want to delete this focus log entry?',
-      type: 'danger',
-      confirmText: 'Delete',
-    });
-    if (ok) {
-      db.timeEntries.delete(entryId);
-    }
-  };
-
   return (
     <motion.div
       className="view active"
@@ -271,7 +151,19 @@ export default function ProjectDetailView() {
         <button
           onClick={() => navigate('/projects')}
           className="ghost-btn"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', fontSize: '14px', fontWeight: 600 }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '0 16px',
+            height: '38px',
+            width: 'auto',
+            fontSize: '14px',
+            fontWeight: 600,
+            color: 'var(--ink-soft)',
+            background: 'var(--card-2)',
+            border: '1px solid var(--stroke-2)',
+          }}
         >
           <Icons.ArrowLeft size={16} />
           <span>Back to Projects</span>
@@ -305,208 +197,13 @@ export default function ProjectDetailView() {
         </div>
       </header>
 
-      {/* Grid Layout (Two Column layout: 1.3fr and 0.7fr) */}
+      {/* Grid Layout (Two Column layout: 1.25fr and 0.75fr) */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 0.75fr', gap: '24px' }}>
         
-        {/* LEFT COLUMN: Sessions and Tasks (Sessions FIRST, Tasks BELOW) */}
+        {/* LEFT COLUMN: Sessions and Tasks */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* LOGGED FOCUS SESSIONS (UPPER SECTION) */}
-          <div className="card" style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h3 className="font-display font-bold text-xl" style={{ margin: 0 }}>Logged Focus Sessions</h3>
-                <p className="text-xs text-ink-soft" style={{ marginTop: '2px' }}>Time entries logged for this project</p>
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--ink)' }}>
-                {loggedHours.toFixed(1)}h total
-              </div>
-            </div>
-
-            {/* Inline Manual Logger */}
-            <form onSubmit={handleManualTimeSubmit} style={{
-              background: 'var(--input-bg)',
-              border: '1px solid var(--stroke-2)',
-              borderRadius: '16px',
-              padding: '12px 14px',
-              display: 'flex',
-              gap: '10px',
-              marginBottom: '16px',
-              alignItems: 'center',
-            }}>
-              <input
-                type="number"
-                step="0.1"
-                placeholder="Hours (e.g. 1.5)"
-                value={manualHours}
-                onChange={e => setManualHours(e.target.value)}
-                style={{
-                  width: '130px',
-                  background: 'var(--card-solid)',
-                  border: '1px solid var(--stroke-2)',
-                  borderRadius: '10px',
-                  padding: '7px 10px',
-                  fontSize: '12.5px',
-                  color: 'var(--ink)',
-                  outline: 'none',
-                }}
-                required
-              />
-              <input
-                type="text"
-                placeholder="Log note (optional)..."
-                value={manualNote}
-                onChange={e => setManualNote(e.target.value)}
-                style={{
-                  flex: 1,
-                  background: 'var(--card-solid)',
-                  border: '1px solid var(--stroke-2)',
-                  borderRadius: '10px',
-                  padding: '7px 10px',
-                  fontSize: '12.5px',
-                  color: 'var(--ink)',
-                  outline: 'none',
-                }}
-              />
-              <button type="submit" className="btn primary" style={{ padding: '7px 12px', borderRadius: '10px', fontSize: '12.5px', flex: 'none', height: '31px' }}>
-                <Icons.Plus size={14} /> Log
-              </button>
-            </form>
-
-            {/* Sessions List */}
-            <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '4px' }}>
-              {projEntries.length === 0 ? (
-                <div className="text-xs text-ink-faint italic p-6 text-center">No focus sessions logged yet. Use the stopwatch or log manual hours above!</div>
-              ) : (
-                [...projEntries]
-                  .sort((a, b) => b.startedAt - a.startedAt)
-                  .map(entry => (
-                    <div
-                      key={entry.id}
-                      style={{
-                        background: 'var(--input-bg)',
-                        border: '1px solid var(--stroke-2)',
-                        borderRadius: '14px',
-                        padding: '12px 14px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <div>
-                        <div className="font-semibold text-sm text-ink">
-                          {formatTimeEntryDate(entry.startedAt)}
-                        </div>
-                        <div className="text-ink-soft text-xs mt-1">
-                          {entry.source === 'manual' ? 'Manual Log' : 'Stopwatch'}
-                          {entry.note ? ` • "${entry.note}"` : ''}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <strong className="font-display font-bold text-sm text-ink">
-                          {calculateDuration(entry.startedAt, entry.endedAt)}
-                        </strong>
-                        {entry.id && (
-                          <button
-                            onClick={() => handleDeleteTimeEntry(entry.id!)}
-                            className="text-ink-faint hover:text-coral transition-colors"
-                            style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px' }}
-                          >
-                            <Icons.Trash2 size={14} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-              )}
-            </div>
-          </div>
-
-          {/* PROJECT TASKS (BELOW SECTION) */}
-          <div className="card" style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h3 className="font-display font-bold text-xl" style={{ margin: 0 }}>Project Tasks</h3>
-                <p className="text-xs text-ink-soft" style={{ marginTop: '2px' }}>Manage requirements and actions for this project</p>
-              </div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ink-soft)' }}>
-                {completedTasks}/{totalTasks} complete
-              </div>
-            </div>
-
-            {/* Add Task Form */}
-            <form onSubmit={handleAddTask} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              <input
-                type="text"
-                placeholder="What needs to be done next?..."
-                value={newTaskTitle}
-                onChange={e => setNewTaskTitle(e.target.value)}
-                style={{
-                  flex: 1,
-                  background: 'var(--input-bg)',
-                  border: '1px solid var(--stroke-2)',
-                  borderRadius: '14px',
-                  padding: '10px 14px',
-                  fontSize: '13.5px',
-                  color: 'var(--ink)',
-                  outline: 'none',
-                }}
-                required
-              />
-              <button type="submit" className="btn primary" style={{ padding: '10px 16px', borderRadius: '14px', flex: 'none' }}>
-                <Icons.Plus size={16} /> Add Task
-              </button>
-            </form>
-
-            {/* Sorted Tasks List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              {sortedProjectTasks.length === 0 ? (
-                <div className="text-xs text-ink-faint italic p-6 text-center">No tasks created yet. Write one above to plan your work.</div>
-              ) : (
-                sortedProjectTasks.map(t => (
-                  <div
-                    key={t.id}
-                    className="task"
-                    style={{
-                      padding: '10px 12px',
-                      background: t.done ? 'color-mix(in srgb, var(--input-bg) 60%, transparent)' : 'var(--input-bg)',
-                      border: '1px solid var(--stroke-2)',
-                      borderRadius: '12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                    }}
-                  >
-                    <div
-                      className={`check ${t.done ? 'done' : ''}`}
-                      onClick={() => t.id && handleToggleTask(t.id, t.done)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <Icons.Check size={12} style={{ strokeWidth: 3 }} />
-                    </div>
-                    <span
-                      className="tx font-medium text-sm"
-                      style={{
-                        flex: 1,
-                        textDecoration: t.done ? 'line-through' : undefined,
-                        color: t.done ? 'var(--ink-faint)' : 'var(--ink)',
-                      }}
-                    >
-                      {t.title}
-                    </span>
-                    <button
-                      onClick={() => t.id && handleDeleteTask(t.id)}
-                      className="text-ink-faint hover:text-coral transition-colors"
-                      style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: '4px' }}
-                    >
-                      <Icons.Trash2 size={14} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
+          <ProjectDetailSessions projectId={projectId} />
+          <ProjectDetailTasks projectId={projectId} />
         </div>
 
         {/* RIGHT COLUMN: Notes and Configuration */}
@@ -621,6 +318,7 @@ export default function ProjectDetailView() {
                 </div>
               )}
 
+              {/* Conditional Task Goal Input */}
               {editGoalType === 'tasks' && (
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-ink-soft block mb-1">
@@ -727,22 +425,7 @@ export default function ProjectDetailView() {
               </div>
 
               {/* Progress Summary Info */}
-              <div style={{
-                background: 'var(--input-bg)',
-                border: '1px solid var(--stroke-2)',
-                borderRadius: '14px',
-                padding: '10px 12px',
-                fontSize: '12.5px',
-                marginTop: '4px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span className="text-ink-soft">Current Progress:</span>
-                  <span className="text-ink font-bold">{calculatedProgress}%</span>
-                </div>
-                <div style={{ height: '6px', background: 'var(--stroke-2)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${calculatedProgress}%`, height: '100%', backgroundColor: `var(${project.colorToken})` }}></div>
-                </div>
-              </div>
+              <ProjectGoalCard projectId={projectId} />
 
               {/* Submit Buttons */}
               <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>

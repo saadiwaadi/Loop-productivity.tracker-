@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../db/db';
-import { useSettings } from '../hooks/useDb';
+import { db } from '../../db/db';
+import { useSettings } from '../../hooks/useDb';
 
 const dayLines = [
   "Two hard things today. That's the whole plan.",

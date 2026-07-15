@@ -81,7 +81,7 @@ export function useWeeklyTimeByProject() {
 
     // Process time entries and allocate hours to starting day
     entries.forEach(entry => {
-      const endedAt = entry.endedAt ?? Date.now();
+      const endedAt = entry.endedAt ?? (entry.pausedAt ?? Date.now());
       const durationHrs = (endedAt - entry.startedAt) / (1000 * 60 * 60);
       const project = projects.find(p => p.id === entry.projectId);
 
@@ -139,9 +139,8 @@ export function useHabitStreak(habitId: number) {
 
     const logs = await db.habitLogs.where('habitId').equals(habitId).toArray();
     const completedDates = new Set(logs.map(l => l.date));
-    const target = habit.targetDaysPerWeek;
 
-    return calculateHabitStreak(target, completedDates);
+    return calculateHabitStreak(7, completedDates);
   }, [habitId]) ?? 0;
 }
 
@@ -180,10 +179,10 @@ export function mergeIntervals(intervals: Interval[]): Interval[] {
   return merged;
 }
 
-export function calculateMergedDuration(timeEntries: { startedAt: number; endedAt: number | null }[]): number {
+export function calculateMergedDuration(timeEntries: { startedAt: number; endedAt: number | null; pausedAt?: number | null }[]): number {
   const intervals: Interval[] = timeEntries.map(e => ({
     start: e.startedAt,
-    end: e.endedAt ?? Date.now(),
+    end: e.endedAt ?? (e.pausedAt ?? Date.now()),
   }));
 
   const merged = mergeIntervals(intervals);

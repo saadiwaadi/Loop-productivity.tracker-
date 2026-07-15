@@ -1,10 +1,10 @@
 import { motion } from 'motion/react';
 import * as Icons from 'lucide-react';
-import ThemeToggle from '../../components/ThemeToggle';
+import ThemeToggle from '../../components/ui/ThemeToggle';
 import { db } from '../../db/db';
 import { useSettings } from '../../hooks/useDb';
-import { useConfirm } from '../../components/ConfirmProvider';
-import { useAuth } from '../../components/AuthProvider';
+import { useConfirm } from '../../components/providers/ConfirmProvider';
+import { useAuth } from '../../components/providers/AuthProvider';
 import { signOut as apiSignOut } from '../../lib/auth';
 import { syncAll } from '../../db/syncManager';
 import { useSyncStatus } from '../../hooks/useSyncStatus';

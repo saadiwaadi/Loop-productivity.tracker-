@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import * as Icons from 'lucide-react';
-import { db } from '../db/db';
-import { useRunningTimeEntries, useProjects } from '../hooks/useDb';
+import { db } from '../../db/db';
+import { useRunningTimeEntries, useProjects } from '../../hooks/useDb';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useConfirm } from './ConfirmProvider';
-import CustomSelect from './CustomSelect';
+import { useConfirm } from '../../components/providers/ConfirmProvider';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 function formatElapsed(ms: number): string {
   const totalSecs = Math.max(0, Math.floor(ms / 1000));
@@ -57,6 +57,11 @@ function RunningTimerCard({ entry, projects, allEntries, confirmDialog }: Runnin
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
+    if (entry.pausedAt) {
+      setElapsed(entry.pausedAt - entry.startedAt);
+      return;
+    }
+
     setElapsed(Date.now() - entry.startedAt);
 
     const interval = setInterval(() => {
@@ -64,7 +69,7 @@ function RunningTimerCard({ entry, projects, allEntries, confirmDialog }: Runnin
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [entry.startedAt]);
+  }, [entry.startedAt, entry.pausedAt]);
 
   const project = projects.find(p => p.id === entry.projectId);
   if (!project) return null;
@@ -74,10 +79,28 @@ function RunningTimerCard({ entry, projects, allEntries, confirmDialog }: Runnin
     return <Icon size={18} />;
   };
 
+  const handlePauseTimer = () => {
+    if (!entry.id) return;
+    db.timeEntries.update(entry.id, {
+      pausedAt: Date.now(),
+    });
+  };
+
+  const handleResumeTimer = () => {
+    if (!entry.id) return;
+    const now = Date.now();
+    const pausedDuration = now - (entry.pausedAt ?? now);
+    db.timeEntries.update(entry.id, {
+      startedAt: entry.startedAt + pausedDuration,
+      pausedAt: null,
+    });
+  };
+
   const handleStopTimer = () => {
     if (!entry.id) return;
     db.timeEntries.update(entry.id, {
-      endedAt: Date.now(),
+      endedAt: entry.pausedAt ?? Date.now(),
+      pausedAt: null,
     });
   };
 
@@ -103,7 +126,7 @@ function RunningTimerCard({ entry, projects, allEntries, confirmDialog }: Runnin
     });
 
     const totalMs = todayEntries.reduce((sum, e) => {
-      const end = e.endedAt ?? Date.now();
+      const end = e.endedAt ?? (e.pausedAt ?? Date.now());
       return sum + (end - e.startedAt);
     }, 0);
 
@@ -118,6 +141,7 @@ function RunningTimerCard({ entry, projects, allEntries, confirmDialog }: Runnin
   const parts = timeStr.split(':');
   const mainTime = `${parts[0]}:${parts[1]}`;
   const secondsTime = `:${parts[2]}`;
+  const isPaused = !!entry.pausedAt;
 
   return (
     <div style={{
@@ -137,13 +161,15 @@ function RunningTimerCard({ entry, projects, allEntries, confirmDialog }: Runnin
         </div>
         <div>
           <div className="nm" style={{ fontSize: '14.5px', fontWeight: 700 }}>{project.name}</div>
-          <div className="tg" style={{ fontSize: '11px', color: 'var(--ink-faint)' }}>Active stopwatch timer</div>
+          <div className="tg" style={{ fontSize: '11px', color: isPaused ? 'var(--amber)' : 'var(--ink-faint)', fontWeight: isPaused ? 600 : 500 }}>
+            {isPaused ? 'Paused' : 'Active stopwatch timer'}
+          </div>
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
         <div>
-          <div className="timer" style={{ fontSize: '28px', textAlign: 'left', margin: '0', fontWeight: 700 }}>
+          <div className="timer" style={{ fontSize: '28px', textAlign: 'left', margin: '0', fontWeight: 700, opacity: isPaused ? 0.75 : 1 }}>
             {mainTime}
             <span className="ms" style={{ fontSize: '15px' }}>{secondsTime}</span>
           </div>
@@ -152,11 +178,20 @@ function RunningTimerCard({ entry, projects, allEntries, confirmDialog }: Runnin
           </div>
         </div>
 
-        <div className="timer-ctrl" style={{ gap: '6px' }}>
-          <button onClick={handleStopTimer} className="btn primary" style={{ padding: '8px 12px', borderRadius: '10px', fontSize: '12.5px', height: '34px' }}>
-            <Icons.Pause fill="currentColor" size={13} /> Pause
+        <div className="timer-ctrl" style={{ display: 'flex', gap: '6px' }}>
+          {isPaused ? (
+            <button onClick={handleResumeTimer} className="btn primary" style={{ padding: '8px 12px', borderRadius: '10px', fontSize: '12.5px', height: '34px', flex: 'none', display: 'flex', alignItems: 'center', gap: '4px' }} title="Resume session">
+              <Icons.Play fill="currentColor" size={13} /> Resume
+            </button>
+          ) : (
+            <button onClick={handlePauseTimer} className="btn primary" style={{ padding: '8px 12px', borderRadius: '10px', fontSize: '12.5px', height: '34px', flex: 'none', display: 'flex', alignItems: 'center', gap: '4px' }} title="Pause session">
+              <Icons.Pause fill="currentColor" size={13} /> Pause
+            </button>
+          )}
+          <button onClick={handleStopTimer} className="btn soft" style={{ padding: '8px 12px', borderRadius: '10px', fontSize: '12.5px', height: '34px', flex: 'none', color: 'var(--coral)', borderColor: 'color-mix(in srgb, var(--coral) 30%, transparent)', display: 'flex', alignItems: 'center', gap: '4px' }} title="Stop session">
+            <Icons.Square fill="currentColor" size={13} /> Stop
           </button>
-          <button onClick={handleResetTimer} className="btn soft" style={{ padding: '8px 10px', borderRadius: '10px', fontSize: '12.5px', height: '34px' }} title="Cancel session">
+          <button onClick={handleResetTimer} className="btn soft" style={{ padding: '8px 10px', borderRadius: '10px', fontSize: '12.5px', height: '34px', flex: 'none' }} title="Cancel session">
             <Icons.RotateCcw size={13} />
           </button>
         </div>

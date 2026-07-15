@@ -189,3 +189,7 @@ export async function pullHabitLogs() { await pullTable('habitLogs'); }
 
 export async function pushSettings() { await pushTable('settings'); }
 export async function pullSettings() { await pullTable('settings'); }
+
+export async function pushCalendarEvents() { await pushTable('calendarEvents'); }
+export async function pullCalendarEvents() { await pullTable('calendarEvents'); }
+

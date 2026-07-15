@@ -171,3 +171,32 @@ CREATE POLICY "Allow users all operations on their own habit_logs" ON habit_logs
 
 CREATE POLICY "Allow users all operations on their own settings" ON settings
     FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+-- 9. CALENDAR EVENTS
+CREATE TABLE IF NOT EXISTS calendar_events (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    date TEXT NOT NULL, -- YYYY-MM-DD
+    category TEXT NOT NULL CHECK (category IN ('work', 'personal', 'education', 'limited')),
+    color_token TEXT NOT NULL,
+    start_time TEXT,
+    end_time TEXT,
+    is_limited BOOLEAN NOT NULL DEFAULT FALSE,
+    limited_ends_at TEXT,
+    reminder BOOLEAN NOT NULL DEFAULT FALSE,
+    note TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at TIMESTAMPTZ,
+    PRIMARY KEY (user_id, id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_calendar_events_user ON calendar_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(user_id, date);
+
+ALTER TABLE calendar_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow users all operations on their own calendar_events" ON calendar_events
+    FOR ALL TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import * as Icons from 'lucide-react';
-import { db } from '../db/db';
+import { db } from '../../db/db';
 
-function formatElapsed(ms: number): string {
+function formatElapsedWithSmallSeconds(ms: number): React.ReactNode {
   const totalSecs = Math.max(0, Math.floor(ms / 1000));
   const hours = Math.floor(totalSecs / 3600);
   const minutes = Math.floor((totalSecs % 3600) / 60);
@@ -13,7 +13,11 @@ function formatElapsed(ms: number): string {
   const mm = String(minutes).padStart(2, '0');
   const ss = String(seconds).padStart(2, '0');
 
-  return `${hh}:${mm}:${ss}`;
+  return (
+    <>
+      {hh}:{mm}<span style={{ fontSize: '0.6em', opacity: 0.8, fontVariantNumeric: 'tabular-nums', marginLeft: '1px' }}>:{ss}</span>
+    </>
+  );
 }
 
 function formatDuration(ms: number): string {
@@ -31,31 +35,7 @@ function formatDuration(ms: number): string {
   return `${seconds}s`;
 }
 
-export default function LiveClock() {
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(new Date());
-    }, 100);
-    return () => clearInterval(timer);
-  }, []);
-
-  const activeSessions = useLiveQuery(async () => {
-    const running = await db.timeEntries.filter(e => !e.endedAt).toArray();
-    const projects = await db.projects.toArray();
-    return running.map(r => {
-      const proj = projects.find(p => p.id === r.projectId);
-      return { ...r, projectName: proj?.name || 'Unknown Project' };
-    });
-  }) || [];
-
-  const nextTask = useLiveQuery(async () => {
-    const list = await db.tasks.filter(t => !t.done).toArray();
-    return list[0] || null;
-  });
-
-  // --- CHECK-IN PRESENCE STOPWATCH ---
+export default function CheckInStopwatch() {
   const runningCheckIn = useLiveQuery(() => {
     return db.checkIns.filter(c => c.endedAt === null).first();
   });
@@ -110,88 +90,15 @@ export default function LiveClock() {
     });
   };
 
-  const hours = now.getHours();
-  const minutes = now.getMinutes();
-  const seconds = now.getSeconds();
-  const ms = now.getMilliseconds();
-
-  // 12-hour formatting
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const displayHours = String(hours % 12 || 12).padStart(2, '0');
-  const displayMinutes = String(minutes).padStart(2, '0');
-  const displaySeconds = `:${String(seconds).padStart(2, '0')}`;
-
-  // Date formatting matching Wed, 11 May
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const dateString = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
-
   const radius = 58;
   const strokeWidth = 9;
   const circumference = 2 * Math.PI * radius; // ~364.42
-  const progress = (seconds + ms / 1000) / 60;
-  const dashOffset = circumference * (1 - progress);
+
+  const checkInProgress = Math.min(1.0, todayTotalMs / (8 * 60 * 60 * 1000));
+  const checkInDashOffset = circumference * (1 - checkInProgress);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
-      <div className="clock-w">
-        <div className="clock-ring">
-          <svg width="132" height="132" viewBox="0 0 132 132">
-            {/* Background Ring */}
-            <circle
-              cx="66"
-              cy="66"
-              r={radius}
-              stroke="var(--stroke-2)"
-              strokeWidth={strokeWidth}
-              fill="none"
-            />
-            {/* Foreground Ring */}
-            <circle
-              cx="66"
-              cy="66"
-              r={radius}
-              stroke="var(--accent)"
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeDasharray={circumference}
-              strokeDashoffset={dashOffset}
-              strokeLinecap="round"
-            />
-          </svg>
-          <div className="clock-face">
-            <div className="period">{period}</div>
-            <div className="big">
-              {displayHours}:{displayMinutes}
-            </div>
-            <div className="sec">{displaySeconds}</div>
-          </div>
-        </div>
-
-        <div className="clock-info">
-          <div className="date">{dateString}</div>
-          <div className="meta">
-            <span className="pulse"></span>
-            <span>
-              {activeSessions.length > 0
-                ? `Timers running (${activeSessions.length}) · ${activeSessions.map(s => s.projectName).join(', ')}`
-                : 'No active session'}
-            </span>
-            {nextTask ? (
-              <>
-                <br />
-                <span>Next: {nextTask.title}</span>
-              </>
-            ) : (
-              <>
-                <br />
-                <span>Next: Chill</span>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
+    <>
       {/* Check-In stopwatch panel */}
       <div style={{ borderTop: '1px solid var(--stroke-2)', marginTop: '16px', paddingTop: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
@@ -244,8 +151,15 @@ export default function LiveClock() {
               color: runningCheckIn ? 'var(--coral)' : 'var(--ink-soft)',
               fontVariantNumeric: 'tabular-nums',
               letterSpacing: '-0.01em',
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'flex-end',
             }}>
-              {runningCheckIn ? formatElapsed(checkInElapsed) : '00:00:00'}
+              {runningCheckIn ? formatElapsedWithSmallSeconds(checkInElapsed) : (
+                <>
+                  00:00<span style={{ fontSize: '0.6em', opacity: 0.8, fontVariantNumeric: 'tabular-nums', marginLeft: '1px' }}>:00</span>
+                </>
+              )}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--ink-faint)', fontWeight: 600 }}>
               Today: {formatDuration(todayTotalMs)}
@@ -253,6 +167,40 @@ export default function LiveClock() {
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Check-In Dial Clock Clock */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px', borderTop: '1px solid var(--stroke-2)', paddingTop: '16px' }}>
+        <div className="clock-ring">
+          <svg width="132" height="132" viewBox="0 0 132 132">
+            <circle
+              cx="66"
+              cy="66"
+              r={radius}
+              stroke="var(--stroke-2)"
+              strokeWidth={strokeWidth}
+              fill="none"
+            />
+            <circle
+              cx="66"
+              cy="66"
+              r={radius}
+              stroke="var(--coral)"
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeDasharray={circumference}
+              strokeDashoffset={checkInDashOffset}
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="clock-face">
+            <div className="period" style={{ color: 'var(--coral)' }}>Logged</div>
+            <div className="big" style={{ fontSize: '18px', marginTop: '4px' }}>
+              {formatDuration(todayTotalMs)}
+            </div>
+            <div className="sec">8h Goal</div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

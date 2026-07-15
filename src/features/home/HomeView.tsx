@@ -3,13 +3,14 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from 'motion/react';
 import * as Icons from 'lucide-react';
 import { db } from '../../db/db';
-import LiveClock from '../../components/LiveClock';
-import ActiveSession from '../../components/ActiveSession';
-import TodayTasks from '../../components/TodayTasks';
-import WeekChart from '../../components/WeekChart';
-import HabitsToday from '../../components/HabitsToday';
+import LiveClock from '../../components/clock/LiveClock';
+import CheckInStopwatch from '../../components/clock/CheckInStopwatch';
+import ActiveSession from './ActiveSession';
+import TodayTasks from '../../components/tasks/TodayTasks';
+import WeekChart from '../../components/charts/WeekChart';
+import HabitsToday from '../../components/habits/HabitsToday';
 import SparksToday from '../../components/SparksToday';
-import ThemeToggle from '../../components/ThemeToggle';
+import ThemeToggle from '../../components/ui/ThemeToggle';
 import { calculateMergedDuration } from '../../hooks/useDb';
 
 const DEFAULT_ORDER = ['clock', 'session', 'tasks', 'chart', 'habits', 'ideas'];
@@ -42,13 +43,14 @@ export default function HomeView() {
     startOfWeek.setHours(0, 0, 0, 0);
 
     const weekEntries = timeEntries.filter(e => {
-      const end = e.endedAt ?? Date.now();
+      const end = e.endedAt ?? (e.pausedAt ?? Date.now());
       return end >= startOfWeek.getTime();
     });
 
     const trimmedEntries = weekEntries.map(e => ({
       startedAt: Math.max(e.startedAt, startOfWeek.getTime()),
       endedAt: e.endedAt,
+      pausedAt: e.pausedAt,
     }));
 
     const totalMs = calculateMergedDuration(trimmedEntries);
@@ -88,7 +90,12 @@ export default function HomeView() {
   const renderWidget = (id: string) => {
     switch (id) {
       case 'clock':
-        return <LiveClock />;
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+            <LiveClock />
+            <CheckInStopwatch />
+          </div>
+        );
       case 'session':
         return <ActiveSession />;
       case 'tasks':

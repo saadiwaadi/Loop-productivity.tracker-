@@ -1,7 +1,7 @@
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db/db';
-import { useWeeklyTimeByProject, useProjects, mergeIntervals } from '../hooks/useDb';
+import { db } from '../../db/db';
+import { useWeeklyTimeByProject, useProjects, mergeIntervals } from '../../hooks/useDb';
 
 export default function WeekChart() {
   const chartData = useWeeklyTimeByProject();
@@ -16,13 +16,13 @@ export default function WeekChart() {
     const startTime = startOf7DaysAgo.getTime();
 
     const weeklyEntries = allEntries.filter(e => {
-      const end = e.endedAt ?? Date.now();
+      const end = e.endedAt ?? (e.pausedAt ?? Date.now());
       return end >= startTime;
     });
 
     const trimmed = weeklyEntries.map(e => ({
       start: Math.max(e.startedAt, startTime),
-      end: e.endedAt ?? Date.now(),
+      end: e.endedAt ?? (e.pausedAt ?? Date.now()),
     }));
 
     const merged = mergeIntervals(trimmed);

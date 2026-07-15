@@ -5,7 +5,7 @@ import * as Icons from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '../../db/db';
 import { useProjects, useTasks } from '../../hooks/useDb';
-import CustomSelect from '../../components/CustomSelect';
+import CustomSelect from '../../components/ui/CustomSelect';
 
 export default function ProjectsView() {
   const projects = useProjects();
@@ -58,7 +58,7 @@ export default function ProjectsView() {
 
     const projEntries = allTimeEntries.filter(e => e.projectId === projectId);
     const hours = projEntries.reduce((sum, entry) => {
-      const end = entry.endedAt ?? Date.now();
+      const end = entry.endedAt ?? (entry.pausedAt ?? Date.now());
       return sum + (end - entry.startedAt) / (1000 * 60 * 60);
     }, 0);
 

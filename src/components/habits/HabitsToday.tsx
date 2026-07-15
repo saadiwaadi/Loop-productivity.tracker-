@@ -1,8 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import * as Icons from 'lucide-react';
-import { db } from '../db/db';
-import { getDateString, calculateHabitStreak } from '../utils/date';
-
+import { db } from '../../db/db';
+import { getDateString, calculateHabitStreak } from '../../utils/date';
 
 export default function HabitsToday() {
   const habitDetails = useLiveQuery(async () => {
@@ -22,9 +21,8 @@ export default function HabitsToday() {
       const last7DaysLogs = habitLogs.filter(l => new Date(l.completedAt).getTime() >= cutoff.getTime());
       
       const completedDates = new Set(habitLogs.map(l => l.date));
-      const target = h.targetDaysPerWeek;
 
-      const streak = calculateHabitStreak(target, completedDates, now);
+      const streak = calculateHabitStreak(7, completedDates, now);
 
       const isTodayCompleted = completedDates.has(todayStr);
 
@@ -148,7 +146,7 @@ export default function HabitsToday() {
                 <div className="info">
                   <div className="n">{habit.name}</div>
                   <div className="s">
-                    {streak > 0 ? `Streak: ${streak}${habit.targetDaysPerWeek === 7 ? 'd' : 'w'}` : `Target: ${habit.targetDaysPerWeek}x/wk`}
+                    {streak > 0 ? `Streak: ${streak}d` : `Target: ${habit.targetDaysPerWeek}x/wk`}
                   </div>
                 </div>
                 <div className="dots">{dots}</div>

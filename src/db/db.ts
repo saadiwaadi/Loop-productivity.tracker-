@@ -22,6 +22,7 @@ export interface Task {
   projectId?: number | null; // Nullable FK (null = standalone task)
   title: string;
   done: boolean;
+  crossedOff?: boolean;
   doneAt?: Date | null;
   dueAt?: Date | null;
   createdAt: Date;
@@ -39,6 +40,7 @@ export interface TimeEntry {
   createdAt?: Date;
   updatedAt?: Date;
   deletedAt?: Date | null;
+  pausedAt?: number | null;
 }
 
 export interface Note {
@@ -48,6 +50,9 @@ export interface Note {
   updatedAt: Date;
   createdAt: Date;
   deletedAt?: Date | null;
+  archived?: boolean;
+  archivedAt?: Date | null;
+  locked?: boolean;
 }
 
 export interface Idea {
@@ -91,6 +96,24 @@ export interface Settings {
   updatedAt?: Date;
   deletedAt?: Date | null;
   lastSyncedAt?: string;
+  notesPin?: string;
+}
+
+export interface CalendarEvent {
+  id?: number;
+  title: string;
+  date: string; // YYYY-MM-DD
+  category: 'work' | 'personal' | 'education' | 'limited';
+  colorToken: string; // one of CSS variables
+  startTime?: string | null;
+  endTime?: string | null;
+  isLimited: boolean;
+  limitedEndsAt?: string | null;
+  reminder: boolean;
+  note?: string | null;
+  createdAt: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
 }
 
 export interface SyncMetadata {
@@ -132,6 +155,7 @@ export class PaceDatabase extends Dexie {
   syncMetadata!: Table<SyncMetadata>;
   syncQueue!: Table<SyncQueueEntry>;
   checkIns!: Table<CheckIn>;
+  calendarEvents!: Table<CalendarEvent>;
 
   constructor() {
     super('PaceDB');
@@ -188,6 +212,21 @@ export class PaceDatabase extends Dexie {
       syncMetadata: 'key',
       syncQueue: '++id, table, operation, recordId',
       checkIns: '++id, startedAt, endedAt, createdAt'
+    });
+
+    this.version(5).stores({
+      projects: '++id, name, status, createdAt, updatedAt, deletedAt',
+      tasks: '++id, projectId, done, dueAt, createdAt, updatedAt, deletedAt',
+      timeEntries: '++id, projectId, startedAt, endedAt, updatedAt, deletedAt',
+      notes: '++id, title, updatedAt, createdAt, deletedAt',
+      ideas: '++id, tag, title, createdAt, updatedAt, deletedAt',
+      habits: '++id, name, archivedAt, createdAt, updatedAt, deletedAt',
+      habitLogs: '++id, habitId, date, [habitId+date], updatedAt, deletedAt',
+      settings: 'id, updatedAt, deletedAt',
+      syncMetadata: 'key',
+      syncQueue: '++id, table, operation, recordId',
+      checkIns: '++id, startedAt, endedAt, createdAt',
+      calendarEvents: '++id, title, date, category, createdAt, updatedAt, deletedAt'
     });
 
     // Populate seed data on first creation

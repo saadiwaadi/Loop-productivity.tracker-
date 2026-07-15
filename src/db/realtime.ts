@@ -21,6 +21,7 @@ export async function handleRealtimePayload(payload: any) {
     habits: 'habits',
     habit_logs: 'habitLogs',
     settings: 'settings',
+    calendar_events: 'calendarEvents',
   };
 
   const dexieTable = tableMap[table];
@@ -67,7 +68,7 @@ export function subscribeToRealtime(userId: string) {
     realtimeChannel.unsubscribe();
   }
 
-  const tables = ['projects', 'tasks', 'time_entries', 'notes', 'ideas', 'habits', 'habit_logs', 'settings'];
+  const tables = ['projects', 'tasks', 'time_entries', 'notes', 'ideas', 'habits', 'habit_logs', 'settings', 'calendar_events'];
 
   realtimeChannel = supabase.channel('public-db-changes');
 

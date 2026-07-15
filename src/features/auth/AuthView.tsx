@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import * as Icons from 'lucide-react';
-import { useAuth } from '../../components/AuthProvider';
+import { useAuth } from '../../components/providers/AuthProvider';
 import { signIn as apiSignIn, signUp as apiSignUp } from '../../lib/auth';
 
 export default function AuthView() {

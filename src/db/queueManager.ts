@@ -40,7 +40,7 @@ export function mapLocalToRemote(table: string, val: any, userId: string) {
   };
 
   for (const key of Object.keys(val)) {
-    if (key === 'id' || key === 'lastSyncedAt') continue;
+    if (key === 'id' || key === 'lastSyncedAt' || key === 'crossedOff' || key === 'archived' || key === 'archivedAt' || key === 'locked' || key === 'notesPin' || key === 'pausedAt') continue;
 
     // Convert camelCase key to snake_case
     let snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();

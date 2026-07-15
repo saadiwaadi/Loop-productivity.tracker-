@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import * as Icons from 'lucide-react';
 import { motion } from 'motion/react';
 import { db } from '../../db/db';
-import Card from '../../components/Card';
 import { mergeIntervals } from '../../hooks/useDb';
 import { calculateHabitStreak } from '../../utils/date';
-
+import PresenceStats from './PresenceStats';
+import FocusDistribution from './FocusDistribution';
+import InitiativeProgress from './InitiativeProgress';
 
 type FilterRange = 'week' | 'month' | 'all';
 
@@ -41,7 +41,7 @@ export default function AnalyzerView() {
     const rangeEntries = timeEntries.filter(e => matchesRange(new Date(e.startedAt)));
     const intervals = rangeEntries.map(e => ({
       start: e.startedAt,
-      end: e.endedAt ?? Date.now(),
+      end: e.endedAt ?? (e.pausedAt ?? Date.now()),
     }));
     const mergedIntervals = mergeIntervals(intervals);
     const totalHours = mergedIntervals.reduce((sum, int) => {
@@ -51,26 +51,21 @@ export default function AnalyzerView() {
     // 2. Tasks completed
     const completedTasks = tasks.filter(t => t.done && t.doneAt && matchesRange(new Date(t.doneAt)));
 
-    // 3. Longest current habit streak
+    // 3. Longest current habit streak (forced to days)
     const activeHabits = habits.filter(h => h.archivedAt === null || h.archivedAt === undefined);
     let maxStreakVal = 0;
-    let maxStreakUnit = 'd';
 
     activeHabits.forEach(h => {
       const logs = habitLogs.filter(l => l.habitId === h.id);
       const completedDates = new Set(logs.map(l => l.date));
-      const target = h.targetDaysPerWeek;
+      const streak = calculateHabitStreak(7, completedDates, now);
 
-      const streak = calculateHabitStreak(target, completedDates, now);
-
-      const unit = target === 7 ? 'd' : 'w';
       if (streak > maxStreakVal) {
         maxStreakVal = streak;
-        maxStreakUnit = unit;
       }
     });
 
-    const maxStreak = `${maxStreakVal}${maxStreakUnit}`;
+    const maxStreak = `${maxStreakVal}d`;
 
     // 4. Count of active projects
     const activeProjects = projects.filter(p => p.status === 'active');
@@ -79,7 +74,7 @@ export default function AnalyzerView() {
     const projectShares = projects.map(p => {
       const projEntries = rangeEntries.filter(e => e.projectId === p.id);
       const hours = projEntries.reduce((sum, entry) => {
-        const end = entry.endedAt ?? Date.now();
+        const end = entry.endedAt ?? (entry.pausedAt ?? Date.now());
         return sum + (end - entry.startedAt) / (1000 * 60 * 60);
       }, 0);
 
@@ -117,7 +112,7 @@ export default function AnalyzerView() {
   }, [range]) || {
     totalHours: 0,
     completedTasksCount: 0,
-    maxStreak: 0,
+    maxStreak: '0d',
     activeProjectsCount: 0,
     projectShares: [],
     projectProgress: [],
@@ -198,111 +193,17 @@ export default function AnalyzerView() {
       {/* Analytics Content */}
       <div className="bento">
         {/* Project Focus Donut Chart (6 columns) */}
-        <Card className="span-6" style={{ padding: '24px' }}>
-          <div className="card-h" style={{ marginBottom: '20px' }}>
-            <div>
-              <div className="t">Focus Distribution</div>
-              <div className="sub">Logged hours by project for {getRangeLabel().toLowerCase()}</div>
-            </div>
-          </div>
-
-          {analyzerData.projectShares.length === 0 ? (
-            <div
-              style={{
-                height: '180px',
-                display: 'grid',
-                placeItems: 'center',
-                color: 'var(--ink-faint)',
-                fontSize: '14px',
-              }}
-            >
-              No hours logged in this range. Start a session!
-            </div>
-          ) : (
-            <div className="donut-wrap">
-              <div className="donut">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={analyzerData.projectShares}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={52}
-                      outerRadius={72}
-                      paddingAngle={3}
-                      dataKey="value"
-                    >
-                      {analyzerData.projectShares.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={`var(${entry.colorToken})`} />
-                      ))}
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-                <b>
-                  <span className="n">{analyzerData.totalHours}h</span>
-                  <span className="l">Total Focus</span>
-                </b>
-              </div>
-
-              {/* Accessible Legend */}
-              <div className="donut-legend">
-                {analyzerData.projectShares.map(p => (
-                  <div key={p.id} className="dl">
-                    <i style={{ backgroundColor: `var(${p.colorToken})` }} />
-                    <span className="nm">{p.name}</span>
-                    <span className="vv">{p.value}h</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </Card>
+        <FocusDistribution
+          projectShares={analyzerData.projectShares}
+          totalHours={analyzerData.totalHours}
+          rangeLabel={getRangeLabel()}
+        />
 
         {/* Project Progress meters (6 columns) */}
-        <Card className="span-6" style={{ padding: '24px' }}>
-          <div className="card-h" style={{ marginBottom: '20px' }}>
-            <div>
-              <div className="t">Initiative Progress</div>
-              <div className="sub">Active project task completion, sorted by progress</div>
-            </div>
-          </div>
+        <InitiativeProgress projectProgress={analyzerData.projectProgress} />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {analyzerData.projectProgress.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--ink-faint)', fontSize: '14px' }}>
-                No active projects found.
-              </div>
-            ) : (
-              analyzerData.projectProgress.map(p => (
-                <div key={p.id} className="proj-card" style={{ cursor: 'default' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', fontWeight: 'bold' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <i
-                        style={{
-                          width: '10px',
-                          height: '10px',
-                          borderRadius: '50%',
-                          backgroundColor: `var(${p.colorToken})`,
-                        }}
-                      />
-                      <span>{p.name}</span>
-                    </div>
-                    <span className="text-ink-soft">{p.progress}%</span>
-                  </div>
-
-                  <div className="bar" style={{ margin: '8px 0 0' }}>
-                    <i
-                      style={{
-                        width: `${p.progress}%`,
-                        backgroundColor: `var(${p.colorToken})`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
+        {/* Presence Stats (12 columns) */}
+        <PresenceStats range={range} />
       </div>
     </motion.div>
   );

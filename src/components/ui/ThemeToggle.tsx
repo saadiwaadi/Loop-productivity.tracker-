@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { db } from '../db/db';
-import { useSettings } from '../hooks/useDb';
+import { db } from '../../db/db';
+import { useSettings } from '../../hooks/useDb';
 
 export default function ThemeToggle() {
   const settings = useSettings();
