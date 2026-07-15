@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
@@ -35,6 +35,11 @@ export default function NoteEditor({ activeNoteId, activeNote, handleNewNote }: 
   const [loadedNoteId, setLoadedNoteId] = useState<number | null>(null);
   const [saveTimeout, setSaveTimeout] = useState<any>(null);
 
+  const activeNoteIdRef = useRef(activeNoteId);
+  useEffect(() => {
+    activeNoteIdRef.current = activeNoteId;
+  }, [activeNoteId]);
+
   // Toolbar Button Active States
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
@@ -66,13 +71,14 @@ export default function NoteEditor({ activeNoteId, activeNote, handleNewNote }: 
     },
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
-      if (!activeNoteId) return;
+      const currentNoteId = activeNoteIdRef.current;
+      if (!currentNoteId) return;
 
       // Debounce autosave logic (800ms)
       if (saveTimeout) clearTimeout(saveTimeout);
       const timeout = setTimeout(() => {
         const title = extractTitle(json);
-        db.notes.update(activeNoteId, {
+        db.notes.update(currentNoteId, {
           title,
           contentJSON: json,
           updatedAt: new Date(),
@@ -80,11 +86,11 @@ export default function NoteEditor({ activeNoteId, activeNote, handleNewNote }: 
       }, 800);
       setSaveTimeout(timeout);
     },
-  }, [activeNoteId]); // Recreate or update on activeNoteId change
+  }, []); // Only initialize editor once
 
   // Guard: Set content exactly once per note ID shift to avoid resetting cursor/focus
   useEffect(() => {
-    if (editor && activeNote) {
+    if (editor && !editor.isDestroyed && activeNote) {
       if (loadedNoteId !== activeNote.id) {
         editor.commands.setContent(activeNote.contentJSON || '');
         setLoadedNoteId(activeNote.id ?? null);
@@ -94,7 +100,7 @@ export default function NoteEditor({ activeNoteId, activeNote, handleNewNote }: 
 
   // Sync Toolbar States on Selection Update
   const updateToolbarStates = () => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     setIsBold(editor.isActive('bold'));
     setIsItalic(editor.isActive('italic'));
     setIsH1(editor.isActive('heading', { level: 1 }));
