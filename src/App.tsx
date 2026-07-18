@@ -1,8 +1,13 @@
-import { useEffect } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import {
+  Home, FolderKanban, FileText, TrendingUp, CalendarDays, PieChart, Settings as SettingsIcon,
+  Activity, Dumbbell, Apple, Moon, Scale, ClipboardList, HeartPulse, Repeat,
+} from 'lucide-react';
 import Dog from './components/dog/Dog';
 import CommandPalette from './components/CommandPalette';
 import { useSettings } from './hooks/useDb';
+import { db } from './db/db';
 import { ConfirmProvider } from './components/providers/ConfirmProvider';
 import { useSyncStatus } from './hooks/useSyncStatus';
 
@@ -31,14 +36,67 @@ function SyncStatusIndicator() {
   );
 }
 
+interface NavItem {
+  to: string;
+  end?: boolean;
+  label: string;
+  Icon: React.ComponentType<{ size?: number | string; strokeWidth?: number | string }>;
+}
+
+const PRODUCTIVITY_NAV: NavItem[] = [
+  { to: '/', end: true, label: 'Home', Icon: Home },
+  { to: '/projects', label: 'Projects', Icon: FolderKanban },
+  { to: '/notes', label: 'Notes', Icon: FileText },
+  { to: '/habits', label: 'Habits', Icon: TrendingUp },
+  { to: '/calendar', label: 'Calendar', Icon: CalendarDays },
+  { to: '/analyzer', label: 'Analyzer', Icon: PieChart },
+];
+
+const HEALTH_NAV: NavItem[] = [
+  { to: '/health', end: true, label: 'Pulse', Icon: Activity },
+  { to: '/health/activity', label: 'Activity', Icon: Dumbbell },
+  { to: '/health/nutrition', label: 'Nutrition', Icon: Apple },
+  { to: '/health/sleep', label: 'Sleep', Icon: Moon },
+  { to: '/health/body', label: 'Body', Icon: Scale },
+  { to: '/health/report', label: 'Report', Icon: ClipboardList },
+];
+
 export default function AppLayout() {
   const settings = useSettings();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Mode follows the route; the stored setting only restores it on app load.
+  const isHealth = location.pathname.startsWith('/health');
+  const mode = isHealth ? 'health' : 'productivity';
+  const nav = isHealth ? HEALTH_NAV : PRODUCTIVITY_NAV;
 
   useEffect(() => {
     if (settings?.theme) {
       document.documentElement.setAttribute('data-theme', settings.theme);
     }
   }, [settings?.theme]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-mode', mode);
+  }, [mode]);
+
+  // On first load, restore the mode this device was last using
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current || !settings) return;
+    restored.current = true;
+    if (settings.mode === 'health' && location.pathname === '/') {
+      navigate('/health', { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings]);
+
+  const switchMode = async () => {
+    const next = isHealth ? 'productivity' : 'health';
+    await db.settings.update(1, { mode: next });
+    navigate(next === 'health' ? '/health' : '/');
+  };
 
   return (
     <ConfirmProvider>
@@ -55,137 +113,55 @@ export default function AppLayout() {
         {/* Sidebar Nav Rail */}
         <nav className="rail">
           <div className="brand-dot">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#33420A" strokeWidth="2.2" strokeLinecap="round">
-              <path d="M12 2a10 10 0 1 0 0 20" />
-              <path d="M12 7v5l3 2" />
-            </svg>
+            {isHealth ? (
+              <HeartPulse size={24} strokeWidth={2.2} />
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M12 2a10 10 0 1 0 0 20" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+            )}
           </div>
-          
-          <NavLink to="/" end className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 10.5 12 3l9 7.5" />
-              <path d="M5 9.5V20h14V9.5" />
-              <path d="M9.5 20v-6h5v6" />
-            </svg>
-            <span className="tip">Home</span>
-          </NavLink>
 
-          <NavLink to="/projects" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="3" />
-              <path d="M3 9h18M8 4v5" />
-            </svg>
-            <span className="tip">Projects</span>
-          </NavLink>
-
-          <NavLink to="/notes" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 3h9l5 5v13H5z" />
-              <path d="M14 3v5h5M9 13h6M9 17h4" />
-            </svg>
-            <span className="tip">Notes &amp; Ideas</span>
-          </NavLink>
-
-          <NavLink to="/habits" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 4v16h16" />
-              <path d="M4 15l4-4 3 3 5-6 4 4" />
-            </svg>
-            <span className="tip">Habits</span>
-          </NavLink>
-
-          <NavLink to="/calendar" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-              <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" />
-            </svg>
-            <span className="tip">Calendar</span>
-          </NavLink>
-
-          <NavLink to="/analyzer" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 1 1-9-9v9z" />
-              <path d="M12 3a9 9 0 0 1 9 9h-9z" opacity=".4" />
-            </svg>
-            <span className="tip">Analyzer</span>
-          </NavLink>
+          {nav.map(({ to, end, label, Icon }) => (
+            <NavLink key={to} to={to} end={end} className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
+              <Icon size={23} strokeWidth={1.9} />
+              <span className="tip">{label}</span>
+            </NavLink>
+          ))}
 
           <div className="rail-spacer"></div>
 
+          <button className="nav-btn mode-switch" onClick={switchMode} title={isHealth ? 'Switch to Productivity' : 'Switch to Health'}>
+            <Repeat size={21} strokeWidth={1.9} />
+            <span className="tip">{isHealth ? 'Productivity mode' : 'Health mode'}</span>
+          </button>
+
           <NavLink to="/settings" className={({ isActive }) => `nav-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3.2" />
-              <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" />
-            </svg>
+            <SettingsIcon size={23} strokeWidth={1.9} />
             <span className="tip">Profile</span>
           </NavLink>
         </nav>
 
         {/* Bottom Tab Bar for Mobile */}
         <nav className="mobile-tab-bar">
-          <NavLink to="/" end className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 10.5 12 3l9 7.5" />
-              <path d="M5 9.5V20h14V9.5" />
-              <path d="M9.5 20v-6h5v6" />
-            </svg>
-            <span className="label">Home</span>
-          </NavLink>
-
-          <NavLink to="/projects" className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="3" />
-              <path d="M3 9h18M8 4v5" />
-            </svg>
-            <span className="label">Projects</span>
-          </NavLink>
-
-          <NavLink to="/notes" className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 3h9l5 5v13H5z" />
-              <path d="M14 3v5h5M9 13h6M9 17h4" />
-            </svg>
-            <span className="label">Notes</span>
-          </NavLink>
-
-          <NavLink to="/habits" className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 4v16h16" />
-              <path d="M4 15l4-4 3 3 5-6 4 4" />
-            </svg>
-            <span className="label">Habits</span>
-          </NavLink>
-
-          <NavLink to="/calendar" className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-              <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01" />
-            </svg>
-            <span className="label">Calendar</span>
-          </NavLink>
-
-          <NavLink to="/analyzer" className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 1 1-9-9v9z" />
-              <path d="M12 3a9 9 0 0 1 9 9h-9z" opacity=".4" />
-            </svg>
-            <span className="label">Analyzer</span>
-          </NavLink>
-
+          {nav.map(({ to, end, label, Icon }) => (
+            <NavLink key={to} to={to} end={end} className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}>
+              <Icon size={19} strokeWidth={2} />
+              <span className="label">{label}</span>
+            </NavLink>
+          ))}
           <NavLink to="/settings" className={({ isActive }) => `tab-btn ${isActive ? 'active' : ''}`}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3.2" />
-              <path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1" />
-            </svg>
+            <SettingsIcon size={19} strokeWidth={2} />
             <span className="label">Profile</span>
           </NavLink>
         </nav>
+
+        {/* Floating mode switch for mobile */}
+        <button className="mobile-mode-switch" onClick={switchMode}>
+          {isHealth ? <PieChart size={15} strokeWidth={2.2} /> : <HeartPulse size={15} strokeWidth={2.2} />}
+          <span>{isHealth ? 'Loop Work' : 'Loop Health'}</span>
+        </button>
 
         {/* Main Content Area */}
         <main className="main">

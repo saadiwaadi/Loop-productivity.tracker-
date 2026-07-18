@@ -70,6 +70,18 @@ export async function syncAll(): Promise<SyncStats> {
     // 9. Sync Calendar Events (no dependencies)
     await syncTable('calendarEvents');
 
+    // 10. Sync Health mode tables (no dependencies).
+    // Wrapped so a missing remote table (migration not yet applied) doesn't
+    // break sync for the core productivity tables.
+    const healthTables = ['healthGoals', 'exerciseLogs', 'waterLogs', 'sleepLogs', 'dietLogs', 'weightLogs', 'stepLogs'];
+    for (const t of healthTables) {
+      try {
+        await syncTable(t);
+      } catch (err) {
+        console.error(`[SyncManager] Health table "${t}" failed to sync (run supabase/migration_health.sql if tables are missing):`, err);
+      }
+    }
+
 
     // Update settings table with last successful sync time
     setBypassSoftDeleteMiddleware(true);

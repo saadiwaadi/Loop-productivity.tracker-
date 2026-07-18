@@ -48,7 +48,61 @@ export default function CommandPalette() {
     window.dispatchEvent(new CustomEvent('pet-biscuit'));
   };
 
+  const setMode = async (mode: 'productivity' | 'health') => {
+    await db.settings.update(1, { mode });
+    navigate(mode === 'health' ? '/health' : '/');
+    setIsOpen(false);
+  };
+
   const commands: CommandItem[] = [
+    {
+      id: 'mode-health',
+      title: 'Switch to Health Mode',
+      icon: <Icons.HeartPulse size={18} />,
+      action: () => { setMode('health'); },
+    },
+    {
+      id: 'mode-productivity',
+      title: 'Switch to Productivity Mode',
+      icon: <Icons.Briefcase size={18} />,
+      action: () => { setMode('productivity'); },
+    },
+    {
+      id: 'go-health-pulse',
+      title: 'Health: Pulse Dashboard',
+      icon: <Icons.Activity size={18} />,
+      action: () => { navigate('/health'); setIsOpen(false); },
+    },
+    {
+      id: 'go-health-activity',
+      title: 'Health: Activity & Steps',
+      icon: <Icons.Dumbbell size={18} />,
+      action: () => { navigate('/health/activity'); setIsOpen(false); },
+    },
+    {
+      id: 'go-health-nutrition',
+      title: 'Health: Water & Nutrition',
+      icon: <Icons.GlassWater size={18} />,
+      action: () => { navigate('/health/nutrition'); setIsOpen(false); },
+    },
+    {
+      id: 'go-health-sleep',
+      title: 'Health: Sleep',
+      icon: <Icons.Moon size={18} />,
+      action: () => { navigate('/health/sleep'); setIsOpen(false); },
+    },
+    {
+      id: 'go-health-body',
+      title: 'Health: Body & Weight',
+      icon: <Icons.Scale size={18} />,
+      action: () => { navigate('/health/body'); setIsOpen(false); },
+    },
+    {
+      id: 'go-health-report',
+      title: 'Health: Report',
+      icon: <Icons.ClipboardList size={18} />,
+      action: () => { navigate('/health/report'); setIsOpen(false); },
+    },
     {
       id: 'go-home',
       title: 'Go to Home',

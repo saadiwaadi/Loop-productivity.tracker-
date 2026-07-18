@@ -97,6 +97,8 @@ export interface Settings {
   deletedAt?: Date | null;
   lastSyncedAt?: string;
   notesPin?: string;
+  // Local-only (excluded from sync): which app mode this device is showing
+  mode?: 'productivity' | 'health';
 }
 
 export interface CalendarEvent {
@@ -137,6 +139,90 @@ export interface CheckIn {
   createdAt: Date;
 }
 
+/* ============ HEALTH MODE TABLES ============ */
+
+export interface ExerciseLog {
+  id?: number;
+  date: string; // YYYY-MM-DD
+  name: string;
+  kind: 'run' | 'walk' | 'gym' | 'cycle' | 'sport' | 'yoga' | 'swim' | 'other';
+  durationMin: number;
+  intensity: 'easy' | 'moderate' | 'hard';
+  calories?: number | null;
+  note?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
+}
+
+export interface WaterLog {
+  id?: number;
+  date: string; // YYYY-MM-DD
+  amountMl: number; // each row is one pour/glass
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
+}
+
+export interface SleepLog {
+  id?: number;
+  date: string; // YYYY-MM-DD of the wake-up morning
+  bedTime: string; // "HH:MM" (24h)
+  wakeTime: string; // "HH:MM" (24h)
+  durationMin: number;
+  quality: 1 | 2 | 3 | 4 | 5;
+  note?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
+}
+
+export interface DietLog {
+  id?: number;
+  date: string; // YYYY-MM-DD
+  meal: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+  description: string;
+  calories?: number | null;
+  onTrack: boolean; // did it match the dietary goals?
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
+}
+
+export interface WeightLog {
+  id?: number;
+  date: string; // YYYY-MM-DD
+  weightKg: number;
+  note?: string | null;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
+}
+
+export interface StepLog {
+  id?: number;
+  date: string; // YYYY-MM-DD — one record per day
+  steps: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
+}
+
+export interface HealthGoals {
+  id: number; // Fixed at 1 (singleton, like Settings)
+  waterGoalMl: number;
+  stepGoal: number;
+  sleepGoalMin: number;
+  exerciseWeeklyMin: number; // target active minutes per week
+  calorieGoal?: number | null;
+  weightGoalKg?: number | null;
+  startWeightKg?: number | null;
+  dietNotes?: string | null; // free-text dietary guidelines to check meals against
+  createdAt?: Date;
+  updatedAt?: Date;
+  deletedAt?: Date | null;
+}
+
 export let bypassSoftDeleteMiddleware = false;
 
 export function setBypassSoftDeleteMiddleware(bypass: boolean) {
@@ -156,6 +242,13 @@ export class PaceDatabase extends Dexie {
   syncQueue!: Table<SyncQueueEntry>;
   checkIns!: Table<CheckIn>;
   calendarEvents!: Table<CalendarEvent>;
+  exerciseLogs!: Table<ExerciseLog>;
+  waterLogs!: Table<WaterLog>;
+  sleepLogs!: Table<SleepLog>;
+  dietLogs!: Table<DietLog>;
+  weightLogs!: Table<WeightLog>;
+  stepLogs!: Table<StepLog>;
+  healthGoals!: Table<HealthGoals>;
 
   constructor() {
     super('PaceDB');
@@ -227,6 +320,29 @@ export class PaceDatabase extends Dexie {
       syncQueue: '++id, table, operation, recordId',
       checkIns: '++id, startedAt, endedAt, createdAt',
       calendarEvents: '++id, title, date, category, createdAt, updatedAt, deletedAt'
+    });
+
+    // Version 6: Health mode tables
+    this.version(6).stores({
+      projects: '++id, name, status, createdAt, updatedAt, deletedAt',
+      tasks: '++id, projectId, done, dueAt, createdAt, updatedAt, deletedAt',
+      timeEntries: '++id, projectId, startedAt, endedAt, updatedAt, deletedAt',
+      notes: '++id, title, updatedAt, createdAt, deletedAt',
+      ideas: '++id, tag, title, createdAt, updatedAt, deletedAt',
+      habits: '++id, name, archivedAt, createdAt, updatedAt, deletedAt',
+      habitLogs: '++id, habitId, date, [habitId+date], updatedAt, deletedAt',
+      settings: 'id, updatedAt, deletedAt',
+      syncMetadata: 'key',
+      syncQueue: '++id, table, operation, recordId',
+      checkIns: '++id, startedAt, endedAt, createdAt',
+      calendarEvents: '++id, title, date, category, createdAt, updatedAt, deletedAt',
+      exerciseLogs: '++id, date, kind, createdAt, updatedAt, deletedAt',
+      waterLogs: '++id, date, createdAt, updatedAt, deletedAt',
+      sleepLogs: '++id, date, createdAt, updatedAt, deletedAt',
+      dietLogs: '++id, date, meal, createdAt, updatedAt, deletedAt',
+      weightLogs: '++id, date, createdAt, updatedAt, deletedAt',
+      stepLogs: '++id, date, createdAt, updatedAt, deletedAt',
+      healthGoals: 'id, updatedAt, deletedAt'
     });
 
     // Populate seed data on first creation

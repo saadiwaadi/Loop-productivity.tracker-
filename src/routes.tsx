@@ -10,6 +10,12 @@ import SettingsView from './features/settings/SettingsView';
 import AuthView from './features/auth/AuthView';
 import ProtectedRoute from './components/providers/ProtectedRoute';
 import CalendarView from './features/calendar/CalendarView';
+import HealthHomeView from './features/health/HealthHomeView';
+import ActivityView from './features/health/ActivityView';
+import NutritionView from './features/health/NutritionView';
+import SleepView from './features/health/SleepView';
+import BodyView from './features/health/BodyView';
+import HealthReportView from './features/health/HealthReportView';
 
 export const router = createBrowserRouter([
   {
@@ -55,6 +61,30 @@ export const router = createBrowserRouter([
           {
             path: 'settings',
             element: <SettingsView />,
+          },
+          {
+            path: 'health',
+            element: <HealthHomeView />,
+          },
+          {
+            path: 'health/activity',
+            element: <ActivityView />,
+          },
+          {
+            path: 'health/nutrition',
+            element: <NutritionView />,
+          },
+          {
+            path: 'health/sleep',
+            element: <SleepView />,
+          },
+          {
+            path: 'health/body',
+            element: <BodyView />,
+          },
+          {
+            path: 'health/report',
+            element: <HealthReportView />,
           },
           {
             path: '*',

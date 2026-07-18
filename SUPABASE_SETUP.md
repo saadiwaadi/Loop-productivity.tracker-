@@ -117,3 +117,11 @@ await signOut();
 // Get active session user info
 const user = await getCurrentUser();
 ```
+
+## Health Mode tables
+
+Health mode (exercise, water, sleep, diet, weight, steps, goals) syncs through
+seven additional tables. To enable it, run `supabase/migration_health.sql` in
+the Supabase SQL editor. Until the migration is applied, health data still
+works fully offline on each device — it just won't sync across devices, and
+the console will log a warning per health table during sync.

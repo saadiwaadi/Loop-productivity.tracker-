@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import * as Icons from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import type { CalendarEvent } from '../../db/db';
 import { getDateString } from '../../utils/date';
 
@@ -26,6 +27,20 @@ export default function CalendarGrid({
 }: CalendarGridProps) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+  const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+
+  // Track slide direction so prev/next months animate from the correct side
+  const lastKey = useRef(monthKey);
+  const direction = useRef(0);
+  if (lastKey.current !== monthKey) {
+    direction.current = monthKey > lastKey.current ? 1 : -1;
+    lastKey.current = monthKey;
+  }
+
+  const monthEventCount = useMemo(() => {
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+    return events.filter(e => e.date.startsWith(prefix) && !e.deletedAt).length;
+  }, [events, year, month]);
 
   const isEventActiveOnDay = (event: CalendarEvent, dayStr: string) => {
     if (event.isLimited && event.limitedEndsAt) {
@@ -82,6 +97,9 @@ export default function CalendarGrid({
       <div className="calendar-header">
         <div className="calendar-header-title">
           {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          <span className="calendar-month-count">
+            {monthEventCount === 0 ? 'no events' : `${monthEventCount} event${monthEventCount === 1 ? '' : 's'}`}
+          </span>
         </div>
         <div className="calendar-nav-buttons">
           <button onClick={handleToday} className="ghost-btn" style={{ padding: '8px 12px', fontSize: '13px' }}>
@@ -104,7 +122,15 @@ export default function CalendarGrid({
         ))}
       </div>
 
-      <div className="calendar-days-grid">
+      <AnimatePresence mode="popLayout" initial={false}>
+      <motion.div
+        key={monthKey}
+        className="calendar-days-grid"
+        initial={{ opacity: 0, x: direction.current * 42 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: direction.current * -42 }}
+        transition={{ duration: 0.28, ease: [0.22, 0.61, 0.36, 1] }}
+      >
         {daysInGrid.map(({ date: dayDate, isCurrentMonth }, idx) => {
           const dayStr = getDateString(dayDate);
           const dayEvents = events.filter(e => isEventActiveOnDay(e, dayStr));
@@ -142,7 +168,8 @@ export default function CalendarGrid({
             </div>
           );
         })}
-      </div>
+      </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

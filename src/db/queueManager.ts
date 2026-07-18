@@ -40,7 +40,7 @@ export function mapLocalToRemote(table: string, val: any, userId: string) {
   };
 
   for (const key of Object.keys(val)) {
-    if (key === 'id' || key === 'lastSyncedAt' || key === 'crossedOff' || key === 'archived' || key === 'archivedAt' || key === 'locked' || key === 'notesPin' || key === 'pausedAt') continue;
+    if (key === 'id' || key === 'lastSyncedAt' || key === 'crossedOff' || key === 'archived' || key === 'archivedAt' || key === 'locked' || key === 'notesPin' || key === 'pausedAt' || key === 'mode') continue;
 
     // Convert camelCase key to snake_case
     let snakeKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
@@ -154,7 +154,15 @@ export async function processQueue() {
         // Calculate exponential backoff
         const attempt = entry.attemptCount + 1;
         await db.syncQueue.update(entry.id!, { attemptCount: attempt });
-        
+
+        // After repeated failures (e.g. remote table missing), skip this entry
+        // for now and keep processing the rest so one bad record can't stall
+        // the entire queue. The entry stays queued for future attempts.
+        if (attempt >= 5) {
+          console.warn(`[QueueManager] Entry for ${entry.table}#${entry.recordId} failed ${attempt} times; deferring and continuing.`);
+          continue;
+        }
+
         const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
         console.info(`[QueueManager] Scheduling retry in ${delay}ms...`);
         
