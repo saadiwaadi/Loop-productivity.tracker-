@@ -48,8 +48,8 @@ export default function HabitStreaks({ habitsData }: HabitStreaksProps) {
         ) : (
           habitsData.details.map(({ habit, completedDates }) => {
             if (!habit.id) return null;
-            // Always calculate day-based streak (target = 7)
-            const dayStreak = calculateHabitStreak(7, completedDates, new Date());
+            // Always calculate day-based streak
+            const dayStreak = calculateHabitStreak(completedDates, new Date());
             return (
               <div key={habit.id} className="ms" style={{ position: 'relative' }}>
                 <div

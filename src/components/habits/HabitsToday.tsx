@@ -12,23 +12,27 @@ export default function HabitsToday() {
     const now = new Date();
     const todayStr = getDateString(now);
 
-    const cutoff = new Date(now);
-    cutoff.setDate(now.getDate() - 7);
-    cutoff.setHours(0, 0, 0, 0);
+    // Generate date strings for last 7 calendar days (ending today)
+    const last7DateStrings: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setHours(12, 0, 0, 0);
+      d.setDate(d.getDate() - i);
+      last7DateStrings.push(getDateString(d));
+    }
 
     return activeHabits.map(h => {
       const habitLogs = logs.filter(l => l.habitId === h.id);
-      const last7DaysLogs = habitLogs.filter(l => new Date(l.completedAt).getTime() >= cutoff.getTime());
-      
       const completedDates = new Set(habitLogs.map(l => l.date));
 
-      const streak = calculateHabitStreak(7, completedDates, now);
-
+      const streak = calculateHabitStreak(completedDates, now);
       const isTodayCompleted = completedDates.has(todayStr);
+
+      const completedCount = last7DateStrings.filter(dateStr => completedDates.has(dateStr)).length;
 
       return {
         habit: h,
-        completedCount: last7DaysLogs.length,
+        completedCount,
         isTodayCompleted,
         streak,
       };

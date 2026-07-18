@@ -19,17 +19,16 @@ export default function HabitsView() {
     const days: Date[] = [];
     for (let i = 13; i >= 0; i--) {
       const d = new Date(now);
-      d.setDate(now.getDate() - i);
       d.setHours(12, 0, 0, 0);
+      d.setDate(d.getDate() - i);
       days.push(d);
     }
 
     const details = activeHabits.map(h => {
       const habitLogs = logs.filter(l => l.habitId === h.id);
       const completedDates = new Set(habitLogs.map(l => l.date));
-      const target = h.targetDaysPerWeek;
 
-      const streak = calculateHabitStreak(target, completedDates, now);
+      const streak = calculateHabitStreak(completedDates, now);
 
       return {
         habit: h,

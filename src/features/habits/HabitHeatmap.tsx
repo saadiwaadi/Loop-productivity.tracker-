@@ -35,7 +35,7 @@ export default function HabitHeatmap({ habitsData, handleToggleCell }: HabitHeat
       }
     }
 
-    const rate = completedCount / target;
+    const rate = Math.min(completedCount / target, 1);
 
     if (rate === 0) return 'cell';
     if (rate < 0.5) return 'cell l1';

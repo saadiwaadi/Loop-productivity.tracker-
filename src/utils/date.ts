@@ -37,78 +37,42 @@ export const getCompletionsForWeek = (monday: Date, completedDates: Set<string>)
 };
 
 /**
- * Calculate the streak of a habit based on its target and completed dates.
- * Supporting:
- * - Daily habits (target === 7): consecutive days.
- * - Weekly habits (target < 7): consecutive weeks meeting target count.
- * @param target The target completions per week (e.g., 7 for daily, <7 for weekly)
+ * Calculate the streak of consecutive completed days for a habit.
+ * Streak is defined as consecutive calendar days completed leading up to today (or yesterday).
  * @param completedDates Set of YYYY-MM-DD date strings when the habit was completed
  * @param referenceDate Optional date to calculate from (defaults to new Date())
  */
 export const calculateHabitStreak = (
-  target: number,
   completedDates: Set<string>,
   referenceDate: Date = new Date()
 ): number => {
-  if (target === 7) {
-    const today = new Date(referenceDate);
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
-    
-    let streak = 0;
-    let currentCheckedDate = new Date(today);
+  const today = new Date(referenceDate);
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
 
-    if (completedDates.has(getDateString(today))) {
-      streak = 1;
-      currentCheckedDate = today;
-    } else if (completedDates.has(getDateString(yesterday))) {
-      streak = 1;
-      currentCheckedDate = yesterday;
-    } else {
-      return 0;
-    }
+  let streak = 0;
+  let currentCheckedDate = new Date(today);
 
-    while (true) {
-      const nextDate = new Date(currentCheckedDate);
-      nextDate.setDate(currentCheckedDate.getDate() - 1);
-      if (completedDates.has(getDateString(nextDate))) {
-        streak++;
-        currentCheckedDate = nextDate;
-      } else {
-        break;
-      }
-    }
-    return streak;
+  if (completedDates.has(getDateString(today))) {
+    streak = 1;
+    currentCheckedDate = today;
+  } else if (completedDates.has(getDateString(yesterday))) {
+    streak = 1;
+    currentCheckedDate = yesterday;
   } else {
-    const thisMonday = getStartOfWeek(referenceDate);
-    const lastMonday = new Date(thisMonday);
-    lastMonday.setDate(thisMonday.getDate() - 7);
-
-    const thisWeekMet = getCompletionsForWeek(thisMonday, completedDates) >= target;
-    const lastWeekMet = getCompletionsForWeek(lastMonday, completedDates) >= target;
-
-    let streak = 0;
-    let currentMonday = thisMonday;
-
-    if (thisWeekMet) {
-      streak = 1;
-      currentMonday = lastMonday;
-    } else if (lastWeekMet) {
-      streak = 1;
-      currentMonday = new Date(lastMonday);
-      currentMonday.setDate(currentMonday.getDate() - 7);
-    } else {
-      return 0;
-    }
-
-    while (true) {
-      if (getCompletionsForWeek(currentMonday, completedDates) >= target) {
-        streak++;
-        currentMonday.setDate(currentMonday.getDate() - 7);
-      } else {
-        break;
-      }
-    }
-    return streak;
+    return 0;
   }
+
+  while (true) {
+    const nextDate = new Date(currentCheckedDate);
+    nextDate.setDate(currentCheckedDate.getDate() - 1);
+    if (completedDates.has(getDateString(nextDate))) {
+      streak++;
+      currentCheckedDate = nextDate;
+    } else {
+      break;
+    }
+  }
+  return streak;
 };
+

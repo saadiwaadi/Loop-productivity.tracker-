@@ -140,7 +140,7 @@ export function useHabitStreak(habitId: number) {
     const logs = await db.habitLogs.where('habitId').equals(habitId).toArray();
     const completedDates = new Set(logs.map(l => l.date));
 
-    return calculateHabitStreak(7, completedDates);
+    return calculateHabitStreak(completedDates);
   }, [habitId]) ?? 0;
 }
 

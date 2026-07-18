@@ -58,7 +58,7 @@ export default function AnalyzerView() {
     activeHabits.forEach(h => {
       const logs = habitLogs.filter(l => l.habitId === h.id);
       const completedDates = new Set(logs.map(l => l.date));
-      const streak = calculateHabitStreak(7, completedDates, now);
+      const streak = calculateHabitStreak(completedDates, now);
 
       if (streak > maxStreakVal) {
         maxStreakVal = streak;
