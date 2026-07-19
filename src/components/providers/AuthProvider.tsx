@@ -30,6 +30,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
+    // iOS Safari (including installed PWAs) suspends timers/websockets while
+    // backgrounded and doesn't reliably fire 'online' on return. Re-sync and
+    // re-subscribe to realtime when the app comes back to the foreground.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        getCurrentUser().then((u) => {
+          if (u) {
+            subscribeToRealtime(u.id);
+            syncAll();
+          }
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Listen to real-time auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN') {
@@ -51,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
       unsubscribeFromRealtime();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 

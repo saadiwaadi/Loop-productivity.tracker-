@@ -12,11 +12,9 @@ export default function ProtectedRoute() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          width: '100vw',
           background: 'var(--bg-1)',
           position: 'fixed',
-          top: 0,
-          left: 0,
+          inset: 0,
           zIndex: 9999
         }}
       >

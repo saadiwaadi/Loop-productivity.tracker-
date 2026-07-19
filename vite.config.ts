@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
+      includeAssets: ['favicon.svg', 'icons.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Pace',
         short_name: 'Pace',
@@ -37,7 +37,18 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // Serve the app shell for any route when offline (Dexie/local data
+        // still drives the UI; this just lets a deep link load at all).
+        navigateFallback: '/index.html',
         runtimeCaching: [
+          {
+            // Supabase must never be served from cache — always hit the
+            // network (or fail visibly) so we never show silently stale
+            // auth/sync data. This is explicit rather than relying on
+            // "no matching route" default behavior.
+            urlPattern: /^https:\/\/.*\.supabase\.co\//,
+            handler: 'NetworkOnly'
+          },
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com/,
             handler: 'CacheFirst',

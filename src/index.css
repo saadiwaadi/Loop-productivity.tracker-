@@ -95,16 +95,30 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  /* Guards against any single long/unbroken string (URL, tag, pasted note
+     title) forcing its container wider than the viewport. No effect on
+     normal text, which already wraps at word boundaries. */
+  overflow-wrap: break-word;
 }
 
 html, body {
   height: 100%;
+  /* iOS Safari (browser tab and installed PWA) allows the whole viewport to
+     rubber-band/pan horizontally if ANY descendant paints past the right
+     edge, even briefly during a render — regardless of whether that
+     descendant is itself scrollable. overflow-x:hidden must be set on both
+     html and body for this to be fully suppressed; body alone is not
+     enough. This is a safety net on top of the real fixes below (min-width:
+     0 on flex children, minmax(0,1fr) grid tracks, label truncation, etc.),
+     not a substitute for them. */
+  overflow-x: hidden;
+  width: 100%;
 }
 
 body {
-  font-family: var(--font-body); 
+  font-family: var(--font-body);
   color: var(--ink);
-  background: var(--bg-1); 
+  background: var(--bg-1);
   overflow: hidden;
   -webkit-font-smoothing: antialiased; 
   text-rendering: optimizeLegibility;
@@ -488,7 +502,7 @@ body {
 .btn.dark { background: var(--ink); color: var(--bg-1); flex: 1; }
 .btn.soft { background: var(--card-2); color: var(--ink); border: 1px solid var(--stroke-2); }
 .manual { margin-top: 14px; display: flex; gap: 8px; align-items: center; }
-.manual input { flex: 1; background: var(--input-bg); border: 1px solid var(--stroke-2); border-radius: var(--r-md); padding: 11px 14px; font-family: var(--font-body); font-size: 14px; color: var(--ink); outline: none; transition: .2s; }
+.manual input { flex: 1; min-width: 0; background: var(--input-bg); border: 1px solid var(--stroke-2); border-radius: var(--r-md); padding: 11px 14px; font-family: var(--font-body); font-size: 14px; color: var(--ink); outline: none; transition: .2s; }
 .manual input:focus { border-color: var(--accent-deep); }
 .manual input::placeholder { color: var(--ink-faint); }
 
@@ -756,6 +770,9 @@ mark { border-radius: 4px; padding: 1px 2px; }
     padding-top: 8px;
     padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     box-shadow: var(--shadow-soft);
+    /* Safety net only — the real fix is min-width:0 + label ellipsis on
+       .tab-btn above, so this should never actually need to clip anything. */
+    overflow-x: hidden;
   }
 
   .tab-btn {
@@ -769,8 +786,23 @@ mark { border-radius: 4px; padding: 1px 2px; }
     text-decoration: none;
     cursor: pointer;
     flex: 1;
+    /* Flex items default to min-width:auto, which floors each tab at its
+       label's un-shrunk text width. With 6-7 tabs that total comfortably
+       exceeds 390px and pushes the bar's content past the viewport edge
+       (the fixed-position bar itself stays put, but its overflowing
+       children are what create real horizontal content past x=390,
+       which is what iOS then lets you pan/rubber-band into). min-width: 0
+       lets each tab actually shrink to the space it's given. */
+    min-width: 0;
     padding: 4px 0;
     transition: color 0.2s ease;
+  }
+
+  .tab-btn .label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .tab-btn svg {
@@ -1622,7 +1654,13 @@ select.event-form-input { appearance: none; cursor: pointer; text-transform: cap
   .stat .v { font-size: 26px; }
   .stat .k { font-size: 11px; }
 
-  .card { padding: 16px; border-radius: 20px; }
+  /* !important is required here: most call sites pass an inline
+     style={{ padding: '24px' }} that merely repeats the desktop default,
+     but an inline style always outranks a stylesheet rule regardless of
+     media query, so without !important this reduced mobile padding was
+     silently never applied and every one of those cards kept eating into
+     an already-tight 390px width budget. */
+  .card { padding: 16px !important; border-radius: 20px !important; }
   .card-h { margin-bottom: 12px; }
   .card-h .t { font-size: 16.5px; }
   .bento { gap: 10px; }
@@ -1703,4 +1741,37 @@ select.event-form-input { appearance: none; cursor: pointer; text-transform: cap
 @media(max-width:720px) {
   /* keep the headline clear of the floating mode pill */
   .top .hello { padding-right: 96px; }
+}
+
+/* ============ MOBILE OVERFLOW HARDENING ============ */
+/* CustomSelect trigger: the label span had no min-width/truncation, so a
+   long option label (e.g. "Manual Progress") inside a 2-column 1fr/1fr
+   grid (ProjectsView/ProjectDetailView create/edit forms) could refuse to
+   shrink and force the grid wider than its container. Truncates instead. */
+.custom-select-trigger {
+  min-width: 0;
+}
+.custom-select-trigger span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Habit heatmap / week header: a bare `1fr` track resolves to
+   minmax(auto, 1fr), where "auto" is content-based and only shrinks below
+   that if every descendant can shrink to 0 recursively. minmax(0, 1fr) says
+   so explicitly instead of relying on it falling out of empty-div content,
+   so the 14 day-cells always fit the space left after the label column. */
+.hgrid .row {
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+}
+.week-head .days {
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+}
+
+/* Same defensive hardening for the calendar's 7-column grids. */
+.calendar-weekdays-grid,
+.calendar-days-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }

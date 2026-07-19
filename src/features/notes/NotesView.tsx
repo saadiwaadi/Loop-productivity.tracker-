@@ -204,6 +204,7 @@ export default function NotesView() {
             borderRadius: '20px',
             padding: '24px',
             width: '320px',
+            maxWidth: 'calc(100vw - 48px)',
             boxShadow: '0 12px 32px rgba(0, 0, 0, 0.25)',
             display: 'flex',
             flexDirection: 'column',

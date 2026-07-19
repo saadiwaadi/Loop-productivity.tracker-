@@ -200,4 +200,13 @@ if (typeof window !== 'undefined') {
     console.info('[Network] Browser offline. Pausing sync...');
     setSyncState('Offline');
   });
+
+  // iOS Safari (including installed PWAs) is unreliable about firing the
+  // 'online' event when the app is backgrounded and returns. Re-check the
+  // queue whenever the app comes back to the foreground as a fallback.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && navigator.onLine) {
+      triggerQueueProcess();
+    }
+  });
 }
