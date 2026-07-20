@@ -466,6 +466,13 @@ body {
 .card-h .t { font-family: var(--font-display); font-weight: 700; font-size: 19px; letter-spacing: -.01em; }
 .card-h .sub { color: var(--ink-faint); font-size: 13px; font-weight: 500; margin-top: 2px; }
 
+/* ============ MINIMIZE (COMPACT) LAYOUT ============ */
+[data-density="compact"] .bento { gap: 10px; }
+[data-density="compact"] .card { padding: 14px; border-radius: 16px; }
+[data-density="compact"] .card-h { margin-bottom: 10px; }
+[data-density="compact"] .card-h .t { font-size: 16px; }
+[data-density="compact"] .card-h .sub { font-size: 12px; }
+
 /* ============ CLOCK WIDGET ============ */
 .clock-w { display: flex; gap: 24px; align-items: center; }
 .clock-ring { position: relative; width: 132px; height: 132px; flex: none; }

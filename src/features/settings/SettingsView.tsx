@@ -1,6 +1,7 @@
 import { motion } from 'motion/react';
 import * as Icons from 'lucide-react';
 import ThemeToggle from '../../components/ui/ThemeToggle';
+import { MinimizeToggle, ZoomControl } from '../../components/ui/DisplayControls';
 import { db } from '../../db/db';
 import { useSettings } from '../../hooks/useDb';
 import { useConfirm } from '../../components/providers/ConfirmProvider';
@@ -319,6 +320,24 @@ export default function SettingsView() {
               <div style={{ color: 'var(--ink-faint)', fontSize: '12.5px', marginTop: '1px' }}>Switch workspace theme</div>
             </div>
             <ThemeToggle />
+          </div>
+
+          {/* Minimize / Compact Layout */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderTop: '1px solid var(--stroke)' }}>
+            <div className="tx">
+              <div style={{ fontWeight: 700, fontSize: '14.5px' }}>Minimize layout</div>
+              <div style={{ color: 'var(--ink-faint)', fontSize: '12.5px', marginTop: '1px' }}>Tighter cards &amp; spacing</div>
+            </div>
+            <MinimizeToggle />
+          </div>
+
+          {/* Zoom */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderTop: '1px solid var(--stroke)' }}>
+            <div className="tx">
+              <div style={{ fontWeight: 700, fontSize: '14.5px' }}>Zoom</div>
+              <div style={{ color: 'var(--ink-faint)', fontSize: '12.5px', marginTop: '1px' }}>Scale the whole app up or down</div>
+            </div>
+            <ZoomControl />
           </div>
 
           {/* Biscuit Companion Enable/Disable */}
