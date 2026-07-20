@@ -1443,48 +1443,54 @@ mark { border-radius: 4px; padding: 1px 2px; }
 
 
 /* ============ HEALTH MODE THEME ============ */
+/* Green + black, matching the usual fitness/health-app look (Whoop, Nike
+   Training, Apple Fitness), replacing the earlier blue/lime combination.
+   --h-blue is kept as the variable name (it's referenced in ~15 places
+   throughout this file) but now holds a green tone, so every one of those
+   call sites picks up the new palette without needing to be touched. */
 :root {
-  --h-blue: #2B32FF;
+  --h-blue: #16A34A;
 }
 
 [data-mode="health"] {
-  --accent: #D9FA4F;
-  --accent-deep: #B8DE22;
-  --accent-ink: #29320A;
+  --accent: #34D399;
+  --accent-deep: #10B981;
+  --accent-ink: #06210F;
 }
 
 [data-mode="health"][data-theme="light"] {
-  --bg-1: #DBDBE0;
-  --bg-2: #D2D2D9;
-  --bg-3: #E9E9EE;
-  --card: rgba(244,244,247,.72);
-  --card-2: rgba(252,252,254,.85);
-  --card-solid: #F6F6F8;
+  --bg-1: #E6E9E6;
+  --bg-2: #DCE1DC;
+  --bg-3: #F0F2F0;
+  --card: rgba(246,248,246,.75);
+  --card-2: rgba(252,253,252,.88);
+  --card-solid: #F8FAF8;
   --card-border: rgba(255,255,255,.9);
-  --blob-a: .32;
-  --blob-b: .30;
-  --blob-c: .22;
-  --blob-d: .18;
+  --blob-a: .28;
+  --blob-b: .26;
+  --blob-c: .20;
+  --blob-d: .16;
 }
 
 [data-mode="health"][data-theme="dark"] {
-  --h-blue: #565CFF;
-  --bg-1: #111117;
-  --bg-2: #16161e;
-  --bg-3: #1c1c25;
-  --card: rgba(34,34,46,.55);
-  --card-2: rgba(42,42,56,.68);
-  --card-solid: #20202b;
+  --h-blue: #22C55E;
+  --bg-1: #000000;
+  --bg-2: #0A0A0A;
+  --bg-3: #131313;
+  --card: rgba(20,24,21,.6);
+  --card-2: rgba(26,31,27,.75);
+  --card-solid: #141715;
+  --card-border: rgba(255,255,255,.08);
 }
 
 [data-mode="health"] .blob.a { background: var(--h-blue); }
 [data-mode="health"] .blob.b { background: var(--accent); }
-[data-mode="health"] .blob.c { background: var(--h-blue); }
-[data-mode="health"] .blob.d { background: var(--sky); }
+[data-mode="health"] .blob.c { background: var(--accent-deep); }
+[data-mode="health"] .blob.d { background: var(--h-blue); }
 
 .brand-dot { color: var(--accent-ink); }
 [data-mode="health"] .brand-dot {
-  background: linear-gradient(150deg, var(--h-blue), #1b20c4);
+  background: linear-gradient(150deg, var(--h-blue), #0F5C2A);
   color: #fff;
   box-shadow: 0 8px 20px -8px var(--h-blue);
 }
@@ -1500,8 +1506,8 @@ mark { border-radius: 4px; padding: 1px 2px; }
   color: #fff;
   box-shadow: 0 10px 24px -12px var(--h-blue);
 }
-[data-mode="health"] .btn.primary:hover { background: #1b20c4; }
-[data-mode="health"][data-theme="dark"] .btn.primary:hover { background: #6b70ff; }
+[data-mode="health"] .btn.primary:hover { background: #0F5C2A; }
+[data-mode="health"][data-theme="dark"] .btn.primary:hover { background: #4ADE80; }
 
 .mode-switch { border: 1px dashed var(--stroke-2); }
 
@@ -1774,4 +1780,19 @@ select.event-form-input { appearance: none; cursor: pointer; text-transform: cap
 .calendar-weekdays-grid,
 .calendar-days-grid {
   grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+/* ============ PROJECT DETAIL MOBILE FIX ============ */
+.pd-title {
+  font-size: 32px;
+}
+
+@media(max-width: 720px) {
+  .pd-title {
+    font-size: 24px;
+  }
+
+  .icon-picker-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
 }

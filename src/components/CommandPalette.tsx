@@ -36,6 +36,12 @@ export default function CommandPalette() {
   }, [isOpen]);
 
   const toggleTheme = async (theme: 'light' | 'dark') => {
+    try {
+      localStorage.setItem('pace-theme', theme);
+    } catch {
+      // ignore
+    }
+    document.documentElement.setAttribute('data-theme', theme);
     const current = await db.settings.get(1);
     if (current) {
       await db.settings.update(1, { theme });

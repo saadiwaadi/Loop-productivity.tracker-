@@ -262,7 +262,7 @@ export default function ProjectsView() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '12px' }}>
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-ink-soft block mb-1">
                     Status

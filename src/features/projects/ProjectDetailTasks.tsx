@@ -86,6 +86,7 @@ export default function ProjectDetailTasks({ projectId }: ProjectDetailTasksProp
           onChange={e => setNewTaskTitle(e.target.value)}
           style={{
             flex: 1,
+            minWidth: 0,
             background: 'var(--input-bg)',
             border: '1px solid var(--stroke-2)',
             borderRadius: '14px',

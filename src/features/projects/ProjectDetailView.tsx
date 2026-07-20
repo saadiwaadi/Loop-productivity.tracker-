@@ -180,7 +180,7 @@ export default function ProjectDetailView() {
             {renderIcon(project.icon, 28)}
           </div>
           <div>
-            <h1 style={{ fontSize: '32px', lineHeight: 1.1, margin: 0 }}>{project.name}</h1>
+            <h1 className="pd-title" style={{ lineHeight: 1.1, margin: 0 }}>{project.name}</h1>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px' }}>
               <span className="pill uppercase tracking-wider" style={getBadgeStyle(project.status)}>
                 {project.status}
@@ -197,17 +197,20 @@ export default function ProjectDetailView() {
         </div>
       </header>
 
-      {/* Grid Layout (Two Column layout: 1.25fr and 0.75fr) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 0.75fr', gap: '24px' }}>
-        
+      {/* Grid Layout: uses the shared .bento grid (same as every other view) so it
+          collapses to a single stacked column on mobile instead of leaving the
+          right column permanently off-screen. Roughly matches the old 1.25:0.75
+          desktop ratio via the existing span-7/span-5 utility classes. */}
+      <div className="bento">
+
         {/* LEFT COLUMN: Sessions and Tasks */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="w span-7" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <ProjectDetailSessions projectId={projectId} />
           <ProjectDetailTasks projectId={projectId} />
         </div>
 
         {/* RIGHT COLUMN: Notes and Configuration */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div className="w span-5" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* PROJECT NOTES CARD */}
           <div className="card" style={{ padding: '24px' }}>
@@ -260,7 +263,7 @@ export default function ProjectDetailView() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '10px' }}>
                 <div>
                   <label className="text-xs font-bold uppercase tracking-wider text-ink-soft block mb-1">
                     Status
@@ -399,7 +402,7 @@ export default function ProjectDetailView() {
                 <label className="text-xs font-bold uppercase tracking-wider text-ink-soft block mb-2">
                   Project Icon
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '4px' }}>
+                <div className="icon-picker-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(8, minmax(0, 1fr))', gap: '4px' }}>
                   {iconOptions.map(ic => (
                     <button
                       key={ic}

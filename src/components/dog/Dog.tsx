@@ -88,17 +88,21 @@ export default function Dog() {
 
     const timer = setTimeout(() => {
       if (!settings.tutorialSeen) {
+        // Shown exactly once, ever — completing it sets tutorialSeen so
+        // this branch never fires again for this account.
         say(
           "Hi, I'm <b>Biscuit</b>. This is your calm page — projects, a stopwatch, habits, and a spot for stray ideas. Tap me anytime and I'll keep you company.",
           0,
           true
         );
+      } else if (isSleepy) {
+        say("Shh… I'm napping. It's late — you should too.");
       } else {
-        if (isSleepy) {
-          say("Shh… I'm napping. It's late — you should too.");
-        } else {
-          say("Hi! Tap me and I'll keep you company.");
-        }
+        // After the first-ever intro, greet with a random line from the
+        // same pool used for petting instead of repeating one fixed
+        // greeting every time the app opens.
+        const pool = new Date().getHours() >= 18 ? eveLines : dayLines;
+        say(pool[Math.floor(Math.random() * pool.length)]);
       }
     }, 1400);
 

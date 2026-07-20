@@ -74,6 +74,12 @@ export default function AppLayout() {
   useEffect(() => {
     if (settings?.theme) {
       document.documentElement.setAttribute('data-theme', settings.theme);
+      try {
+        localStorage.setItem('pace-theme', settings.theme);
+      } catch {
+        // localStorage unavailable (private mode etc.) — the app still
+        // works, it just loses the instant-paint boot optimization.
+      }
     }
   }, [settings?.theme]);
 

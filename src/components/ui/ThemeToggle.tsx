@@ -11,6 +11,16 @@ export default function ThemeToggle() {
   }, [theme]);
 
   const toggleTheme = (newTheme: 'light' | 'dark') => {
+    // Write-through to localStorage synchronously so the choice survives
+    // even if the tab closes before the Dexie write + live-query round
+    // trip settles — that async gap is what let the theme appear to
+    // "forget itself" on the next open.
+    try {
+      localStorage.setItem('pace-theme', newTheme);
+    } catch {
+      // ignore
+    }
+    document.documentElement.setAttribute('data-theme', newTheme);
     db.settings.update(1, { theme: newTheme });
   };
 

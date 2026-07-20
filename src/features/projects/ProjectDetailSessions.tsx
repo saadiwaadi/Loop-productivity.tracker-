@@ -119,6 +119,7 @@ export default function ProjectDetailSessions({ projectId }: ProjectDetailSessio
           onChange={e => setManualNote(e.target.value)}
           style={{
             flex: 1,
+            minWidth: 0,
             background: 'var(--card-solid)',
             border: '1px solid var(--stroke-2)',
             borderRadius: '10px',

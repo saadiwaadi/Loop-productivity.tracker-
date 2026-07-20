@@ -91,10 +91,21 @@ export async function syncAll(): Promise<SyncStats> {
       if (settingsRow) {
         await db.settings.update(1, { lastSyncedAt: syncStartTime.toISOString() });
       } else {
+        // Prefer whatever theme was last cached in localStorage over a
+        // hardcoded default, so a settings row created here (e.g. after
+        // local storage was cleared/evicted) doesn't silently flip an
+        // already-chosen dark theme back to light.
+        let cachedTheme: 'light' | 'dark' = 'light';
+        try {
+          const stored = localStorage.getItem('pace-theme');
+          if (stored === 'dark' || stored === 'light') cachedTheme = stored;
+        } catch {
+          // ignore
+        }
         await db.settings.put({
           id: 1,
           name: 'Saad',
-          theme: 'light',
+          theme: cachedTheme,
           dogEnabled: true,
           tutorialSeen: false,
           lastSyncedAt: syncStartTime.toISOString()

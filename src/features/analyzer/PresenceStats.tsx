@@ -60,45 +60,43 @@ export default function PresenceStats({ range }: PresenceStatsProps) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-        <div style={{ background: 'var(--input-bg)', border: '1px solid var(--stroke-2)', borderRadius: '16px', padding: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-soft)', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
-            <Icons.LogIn size={14} />
-            <span>Presence Status</span>
+      {/* Reuses the same .mini-stats/.ms pattern as the stat cards above —
+          the previous ad hoc repeat(4, 1fr) grid had no mobile collapse and
+          no min-width:0 on its label rows, so on narrow screens it got
+          clipped by the card instead of shrinking or stacking. */}
+      <div className="mini-stats">
+        <div className="ms">
+          <div className="ic" style={{ backgroundColor: 'var(--sky)' }}>
+            <Icons.LogIn size={16} />
           </div>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: activeCheckIn ? 'var(--mint)' : 'var(--ink-soft)' }}>
-            {activeCheckIn ? 'Currently Checked In' : 'Checked Out'}
+          <div className="v" style={{ fontSize: '16px', color: activeCheckIn ? 'var(--mint)' : 'var(--ink)' }}>
+            {activeCheckIn ? 'Checked In' : 'Checked Out'}
           </div>
+          <div className="k">Presence Status</div>
         </div>
 
-        <div style={{ background: 'var(--input-bg)', border: '1px solid var(--stroke-2)', borderRadius: '16px', padding: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-soft)', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
-            <Icons.Clock size={14} />
-            <span>Total Checked In Time</span>
+        <div className="ms">
+          <div className="ic" style={{ backgroundColor: 'var(--violet)' }}>
+            <Icons.Clock size={16} />
           </div>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--ink)' }}>
-            {formatDuration(totalDurationMs)}
-          </div>
+          <div className="v" style={{ fontSize: '18px' }}>{formatDuration(totalDurationMs)}</div>
+          <div className="k">Total Checked In Time</div>
         </div>
 
-        <div style={{ background: 'var(--input-bg)', border: '1px solid var(--stroke-2)', borderRadius: '16px', padding: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-soft)', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
-            <Icons.Flame size={14} />
-            <span>Total Sessions</span>
+        <div className="ms">
+          <div className="ic" style={{ backgroundColor: 'var(--coral)' }}>
+            <Icons.Flame size={16} />
           </div>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--ink)' }}>
-            {totalSessions} check-ins
-          </div>
+          <div className="v" style={{ fontSize: '18px' }}>{totalSessions}</div>
+          <div className="k">Total Sessions</div>
         </div>
 
-        <div style={{ background: 'var(--input-bg)', border: '1px solid var(--stroke-2)', borderRadius: '16px', padding: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-soft)', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
-            <Icons.Calendar size={14} />
-            <span>Daily Average</span>
+        <div className="ms">
+          <div className="ic" style={{ backgroundColor: 'var(--mint)' }}>
+            <Icons.Calendar size={16} />
           </div>
-          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--ink)' }}>
-            {formatDuration(averageDailyMs)}/day
-          </div>
+          <div className="v" style={{ fontSize: '18px' }}>{formatDuration(averageDailyMs)}</div>
+          <div className="k">Daily Average</div>
         </div>
       </div>
     </Card>
