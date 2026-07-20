@@ -99,6 +99,9 @@ export interface Settings {
   notesPin?: string;
   // Local-only (excluded from sync): which app mode this device is showing
   mode?: 'productivity' | 'health';
+  // Local-only display prefs: compact card density and UI zoom level (%)
+  uiDensity?: 'comfortable' | 'compact';
+  uiZoom?: number;
 }
 
 export interface CalendarEvent {

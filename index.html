@@ -24,6 +24,14 @@
         if (t === 'dark' || t === 'light') {
           document.documentElement.setAttribute('data-theme', t);
         }
+        var d = localStorage.getItem('pace-density');
+        if (d === 'compact' || d === 'comfortable') {
+          document.documentElement.setAttribute('data-density', d);
+        }
+        var z = localStorage.getItem('pace-zoom');
+        if (z && !isNaN(Number(z))) {
+          document.documentElement.style.zoom = (Number(z) / 100).toString();
+        }
       } catch (e) {}
     </script>
   </head>
